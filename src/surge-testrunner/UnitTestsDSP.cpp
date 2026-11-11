@@ -30,10 +30,7 @@
 #include "HeadlessUtils.h"
 #include "Player.h"
 #include "Oscillator.h"
-#include "ModernOscillator.h"
 #include "ClassicOscillator.h"
-#include "WavetableOscillator.h"
-#include "SampleAndHoldOscillator.h"
 
 #include "catch2/catch_amalgamated.hpp"
 
@@ -52,7 +49,6 @@ TEST_CASE("Simple Single Oscillator is Constant", "[osc]")
 {
     auto surge = Surge::Headless::createSurge(44100);
     REQUIRE(surge);
-    // surge->storage.getPatch().scene[0].osc[0].type.val.i = ot_sine;
 
     int len = 4410 * 5;
     // int len = BLOCK_SIZE * 20;
@@ -303,12 +299,12 @@ TEST_CASE("Unison at Different Sample Rates", "[osc]")
 
 TEST_CASE("Every Oscillator Plays", "[dsp]")
 {
-    for (int i = 0; i < n_osc_types; ++i)
+    for (int i : {ot_classic, ot_FM3})
     {
         DYNAMIC_SECTION("Oscillator type " << osc_type_names[i])
         {
-            auto surge = Surge::Headless::createSurge(44100, true);
-            REQUIRE(surge->storage.wt_list.size() > 0);
+            auto surge = Surge::Headless::createSurge(44100);
+            REQUIRE(surge);
 
             for (int q = 0; q < BLOCK_SIZE; q++)
             {
@@ -321,24 +317,6 @@ TEST_CASE("Every Oscillator Plays", "[dsp]")
             for (int q = 0; q < 10; ++q)
                 surge->process();
 
-            int idx = 0;
-            bool got = false;
-            for (auto q : surge->storage.wt_list)
-            {
-                if (q.name == "Sine Power HQ")
-                {
-                    got = true;
-                    surge->storage.getPatch().scene[0].osc[0].wt.queue_id = idx;
-                }
-                idx++;
-            }
-            REQUIRE(got);
-            for (int q = 0; q < 10; ++q)
-                surge->process();
-
-            REQUIRE(std::string(surge->storage.getPatch().scene[0].osc[0].wavetable_display_name) ==
-                    "Sine Power HQ");
-
             float sumAbsOut = 0;
             surge->playNote(0, 60, 127, 0);
             for (int q = 0; q < 100; ++q)
@@ -347,10 +325,7 @@ TEST_CASE("Every Oscillator Plays", "[dsp]")
                 for (int s = 0; s < BLOCK_SIZE; ++s)
                     sumAbsOut += fabs(surge->output[0][s]);
             }
-            if (i == ot_audioinput)
-                REQUIRE(sumAbsOut < 1e-4);
-            else
-                REQUIRE(sumAbsOut > 1);
+            REQUIRE(sumAbsOut > 1);
         }
     }
 }
@@ -551,8 +526,7 @@ TEST_CASE("Don't Fear The Reaper", "[dsp]")
     // Reaper added cool per-plugin oversampling. Will we do OK with that?
     for (auto base : {44100, 48000})
     {
-        // A few like string and noise won't pass this test so be explicit about our choices
-        for (auto t : {ot_sine, ot_FM2, ot_wavetable, ot_window, ot_alias})
+        for (auto t : {ot_FM3})
         {
             DYNAMIC_SECTION("Oversample Test " << base << " on " << osc_type_names[t])
             {
@@ -742,8 +716,7 @@ TEST_CASE("Oscillator Onset", "[dsp]") // See issue 7570
 
     for (const auto &rt : {true, false})
     {
-        for (const auto &ot :
-             {ot_classic, ot_wavetable, ot_window, ot_sine, ot_twist, ot_shnoise, ot_FM2, ot_FM3})
+        for (const auto &ot : {ot_classic, ot_FM3})
         {
             for (const auto &note : {24, 60, 96})
             {
@@ -796,76 +769,6 @@ TEST_CASE("Oscillator Onset", "[dsp]") // See issue 7570
     }
 }
 
-TEST_CASE("S&H Noise Economy Mode", "[dsp]") // See issue 2387
-{
-    // Renders the S&H Noise oscillator from a fixed random sequence, with Economy Mode on or off
-    auto render = [](int voices, float sync, float pitch, bool economy, int blocks,
-                     std::vector<float> &out) {
-        auto surge = Surge::Headless::createSurge(44100);
-        auto storage = &surge->storage;
-        auto oscstorage = &(storage->getPatch().scene[0].osc[0]);
-        auto sd = storage->getPatch().scenedata[0];
-        unsigned char oscbuffer alignas(16)[oscillator_buffer_size];
-
-        storage->rngGen.g.seed(2387);
-
-        auto o = spawn_osc(ot_shnoise, storage, oscstorage, sd,
-                           storage->getPatch().scenedataOrig[0], oscbuffer);
-        o->init_ctrltypes();
-        o->init_default_values();
-        o->init_extra_config();
-
-        using S = SampleAndHoldOscillator;
-        auto set = [&](int idx, float v) {
-            oscstorage->p[idx].val.f = v;
-            sd[oscstorage->p[idx].param_id_in_scene].f = v;
-        };
-        set(S::shn_sync, sync);
-        set(S::shn_unison_detune, 1.f);
-        oscstorage->p[S::shn_unison_voices].val.i = voices;
-        oscstorage->p[S::shn_sync].deform_type = economy ? 1 : 0;
-
-        o->init(pitch);
-
-        out.resize(blocks * BLOCK_SIZE_OS);
-        for (int b = 0; b < blocks; ++b)
-        {
-            o->process_block(pitch, 0, false, false, 0);
-            std::copy(o->output, o->output + BLOCK_SIZE_OS, out.begin() + b * BLOCK_SIZE_OS);
-        }
-        o->~Oscillator();
-    };
-
-    auto rmsdb = [](const std::vector<float> &v) {
-        double s = 0;
-        for (auto x : v)
-            s += (double)x * x;
-        return 10 * std::log10(s / v.size() + 1e-30);
-    };
-
-    SECTION("Identical below the cap")
-    {
-        // pitch 60 with sync 24 is far below the step rate where the cap engages
-        std::vector<float> off, on;
-        render(4, 24.f, 60.f, false, 40, off);
-        render(4, 24.f, 60.f, true, 40, on);
-        REQUIRE(off == on);
-    }
-
-    SECTION("Finite and level-matched above the cap")
-    {
-        // the scenario from the issue: pitch clamped at 148, 16 unison voices, maximum sync
-        std::vector<float> off, on;
-        render(16, 60.f, 148.f, false, 300, off);
-        render(16, 60.f, 148.f, true, 300, on);
-        for (auto x : on)
-            REQUIRE(std::isfinite(x));
-        auto dOff = rmsdb(off), dOn = rmsdb(on);
-        INFO("Economy off " << dOff << " dB, on " << dOn << " dB");
-        REQUIRE(std::fabs(dOff - dOn) < 1.5);
-    }
-}
-
 TEST_CASE("Chow DSP Delay", "[dsp]")
 {
     chowdsp::DelayLine<float> floatDelay(1024);
@@ -891,206 +794,6 @@ TEST_CASE("Chow DSP Delay", "[dsp]")
             REQUIRE(dR == 0.f);
         }
     }
-}
-
-/*
- * Modern oscillator pitch tracking, covering both halves of #7224.
- *
- * Modern's saw component is a direct linear readout of the oscillator phase:
- * with saw mix at 1.0 the mono output is exactly (phase - dphase - 0.5), so
- * differencing the output recovers the per-sample phase increment - the
- * quantity the pitch smoothing actually acts on. Both properties under test are
- * therefore measurable from output[] alone: how quickly a pitch step is
- * tracked, and whether the increment stays continuous across block boundaries
- * when pitch moves a long way every single block.
- */
-namespace
-{
-std::vector<float> renderModernSaw(int nBlocks, const std::function<float(int)> &pitchAt)
-{
-    auto surge = Surge::Headless::createSurge(48000);
-    REQUIRE(surge);
-
-    auto storage = &surge->storage;
-    auto oscdata = &(storage->getPatch().scene[0].osc[0]);
-
-    unsigned char oscbuffer alignas(16)[oscillator_buffer_size];
-
-    auto o = spawn_osc(ot_modern, storage, oscdata, storage->getPatch().scenedata[0],
-                       storage->getPatch().scenedataOrig[0], oscbuffer);
-    o->init_ctrltypes();
-    o->init_default_values();
-    o->init_extra_config();
-
-    oscdata->p[ModernOscillator::mo_saw_mix].val.f = 1.f;
-    oscdata->p[ModernOscillator::mo_pulse_mix].val.f = 0.f;
-    oscdata->p[ModernOscillator::mo_tri_mix].val.f = 0.f;
-    oscdata->p[ModernOscillator::mo_tri_mix].deform_type = 0;
-    oscdata->p[ModernOscillator::mo_sync].val.f = 0.f;
-    oscdata->p[ModernOscillator::mo_unison_voices].val.i = 1;
-    oscdata->retrigger.val.b = true;
-    storage->getPatch().character.val.i = 1; // neutral, so the character filter is a passthrough
-
-    storage->getPatch().copy_scenedata(storage->getPatch().scenedata[0],
-                                       storage->getPatch().scenedataOrig[0], 0);
-
-    o->init(pitchAt(0), false, false);
-
-    std::vector<float> res;
-    res.reserve((size_t)nBlocks * BLOCK_SIZE_OS);
-
-    for (int b = 0; b < nBlocks; ++b)
-    {
-        o->process_block(pitchAt(b), 0.f, false, false, 0.f);
-
-        for (int i = 0; i < BLOCK_SIZE_OS; ++i)
-        {
-            res.push_back(o->output[i]);
-        }
-    }
-
-    o->~Oscillator();
-
-    return res;
-}
-
-/*
- * Per-sample phase increment recovered from that saw readout. Samples within
- * three of a phase wrap are marked invalid - that is where the DPW correction
- * shapes the step, so the output is not a plain phase ramp there.
- */
-struct RecoveredPhase
-{
-    std::vector<double> dphase;
-    std::vector<char> valid;
-};
-
-RecoveredPhase recoverPhase(const std::vector<float> &o)
-{
-    RecoveredPhase r;
-    auto n = (int)o.size() - 1;
-
-    r.dphase.resize(n);
-    r.valid.assign(n, 1);
-
-    for (int i = 0; i < n; ++i)
-    {
-        auto d = (double)o[i + 1] - (double)o[i];
-
-        if (d < -0.25)
-        {
-            d += 1.0;
-
-            for (int k = std::max(0, i - 3); k < std::min(n, i + 4); ++k)
-            {
-                r.valid[k] = 0;
-            }
-        }
-
-        r.dphase[i] = d;
-    }
-
-    return r;
-}
-} // namespace
-
-TEST_CASE("Modern Oscillator Tracks Pitch Steps", "[osc]")
-{
-    constexpr int stepBlock = 20;
-    constexpr int totalBlocks = 80;
-
-    auto data = renderModernSaw(totalBlocks, [](int b) { return b < stepBlock ? 60.f : 72.f; });
-    auto rec = recoverPhase(data);
-
-    // Steady state a long way after the step is the target increment.
-    double target = 0;
-    int targetN = 0;
-
-    for (int i = 70 * BLOCK_SIZE_OS; i < (int)rec.dphase.size(); ++i)
-    {
-        if (rec.valid[i])
-        {
-            target += rec.dphase[i];
-            targetN++;
-        }
-    }
-
-    REQUIRE(targetN > 0);
-    target /= targetN;
-
-    const int stepAt = stepBlock * BLOCK_SIZE_OS;
-    int settledAt = stepAt;
-
-    for (int i = stepAt; i < (int)rec.dphase.size(); ++i)
-    {
-        if (rec.valid[i] && std::fabs(rec.dphase[i] - target) > 0.02 * target)
-        {
-            settledAt = i + 1;
-        }
-    }
-
-    /*
-     * The increment is interpolated across exactly the block in which the new
-     * pitch arrives, so it is on target by the end of that block. Before #7224
-     * this took some 800 samples, which is the audible portamento the issue
-     * reports at a portamento time of zero.
-     */
-    INFO("settled after " << (settledAt - stepAt) << " samples of " << BLOCK_SIZE_OS);
-    REQUIRE(settledAt - stepAt <= BLOCK_SIZE_OS);
-}
-
-TEST_CASE("Modern Oscillator Phase Increment Is Block Continuous", "[osc]")
-{
-    // An audio-rate modulator on oscillator pitch arrives as a large pitch
-    // change every single block, so alternate an octave up and down per block.
-    constexpr int totalBlocks = 200;
-
-    auto data = renderModernSaw(totalBlocks, [](int b) { return (b % 2) ? 60.f : 48.f; });
-    auto rec = recoverPhase(data);
-
-    double worst = 0;
-    int worstAt = -1;
-    double smallest = 1e9, largest = 0;
-
-    for (int i = 4 * BLOCK_SIZE_OS; i < (int)rec.dphase.size(); ++i)
-    {
-        if (!rec.valid[i] || !rec.valid[i - 1])
-        {
-            continue;
-        }
-
-        smallest = std::min(smallest, rec.dphase[i]);
-        largest = std::max(largest, rec.dphase[i]);
-
-        auto j = std::fabs(rec.dphase[i] - rec.dphase[i - 1]);
-
-        if (j > worst)
-        {
-            worst = j;
-            worstAt = i;
-        }
-    }
-
-    const auto dphaseFor = [](double pitch) {
-        return Tunings::MIDI_0_FREQ * std::pow(2.0, pitch / 12.0) / (48000.0 * OSC_OVERSAMPLING);
-    };
-    const auto span = dphaseFor(60.0) - dphaseFor(48.0);
-
-    // The modulation has to actually arrive. A smoother slow enough to swallow a
-    // per-block octave would pass the continuity check below trivially.
-    INFO("increment range " << smallest << " .. " << largest << ", expected span " << span);
-    REQUIRE(largest - smallest >= 0.85 * span);
-
-    /*
-     * Within a block the increment moves by span / BLOCK_SIZE_OS per sample, and
-     * at a boundary that slope can reverse, so a few multiples of it is the
-     * honest ceiling. An interpolator sized for the wrong block length overshoots
-     * and snaps back by the whole span instead, which is what made the first
-     * attempt at #7224 pop on patches modulating pitch at audio rate.
-     */
-    INFO("worst increment step " << worst << " at " << worstAt << ", block offset "
-                                 << (worstAt % BLOCK_SIZE_OS));
-    REQUIRE(worst < 8.0 * span / BLOCK_SIZE_OS);
 }
 
 TEST_CASE("Invalid Sample Rates Are Ignored", "[dsp]") // See issue 8240
@@ -1377,7 +1080,7 @@ TEST_CASE("Retrigger Off Is A Phase Shift", "[dsp]") // See issue 7570
         float sync;
     };
 
-    for (const auto &c : {Case{ot_classic, 0.f}, Case{ot_classic, 12.f}, Case{ot_wavetable, 0.f}})
+    for (const auto &c : {Case{ot_classic, 0.f}, Case{ot_classic, 12.f}})
     {
         auto surge = Surge::Headless::createSurge(44100);
         auto storage = &surge->storage;
@@ -1493,11 +1196,6 @@ TEST_CASE("Onset Step Stays Within The Waveform", "[dsp]") // See issue 7570
     ** This is a default parameter bound. At extreme Width and Shape settings the ratio
     ** legitimately reaches about 3.7, since the waveform is far more asymmetric there.
     **
-    ** S&H is band limited noise, whose running steps are much smaller than its held levels,
-    ** so its reference is the largest running level instead. Measured at 0.78 at MIDI 60
-    ** and 1.15 at MIDI 148 with Sync 60, which runs deep in Economy Mode, where every held
-    ** level is scaled down by levelComp. A seeded level that skips that scaling takes the
-    ** Economy Mode case to 3.19.
     */
     constexpr int nTrials{200};
     constexpr int warmup{8};
@@ -1514,8 +1212,7 @@ TEST_CASE("Onset Step Stays Within The Waveform", "[dsp]") // See issue 7570
 
     for (const auto &c :
          {Case{ot_classic, 36, 0.f, false, 1.5f}, Case{ot_classic, 36, 60.f, false, 1.5f},
-          Case{ot_classic, 60, 0.f, false, 1.5f}, Case{ot_classic, 60, 60.f, false, 1.5f},
-          Case{ot_shnoise, 60, 0.f, true, 1.4f}, Case{ot_shnoise, 148, 60.f, true, 1.4f}})
+          Case{ot_classic, 60, 0.f, false, 1.5f}, Case{ot_classic, 60, 60.f, false, 1.5f}})
     {
         auto surge = Surge::Headless::createSurge(44100);
         auto storage = &surge->storage;
@@ -1533,10 +1230,7 @@ TEST_CASE("Onset Step Stays Within The Waveform", "[dsp]") // See issue 7570
         o->init_extra_config();
 
         pushOscParamsToScene(storage, oscstorage);
-        setOscParam(storage, oscstorage,
-                    c.type == ot_classic ? (int)ClassicOscillator::co_sync
-                                         : (int)SampleAndHoldOscillator::shn_sync,
-                    c.sync);
+        setOscParam(storage, oscstorage, ClassicOscillator::co_sync, c.sync);
 
         float worst{0.f}, worstJump{0.f}, worstRef{0.f};
 
@@ -1641,9 +1335,7 @@ TEST_CASE("First Block Runs At The Steady Rate", "[dsp]") // See issue 7570
         float value;
     };
 
-    for (const auto &c : {Case{ot_classic, 72, ClassicOscillator::co_sync, 60.f},
-                          Case{ot_shnoise, 72, SampleAndHoldOscillator::shn_sync, 60.f},
-                          Case{ot_wavetable, 96, WavetableOscillator::wt_formant, 12.f}})
+    for (const auto &c : {Case{ot_classic, 72, ClassicOscillator::co_sync, 60.f}})
     {
         auto surge = Surge::Headless::createSurge(44100);
         auto storage = &surge->storage;

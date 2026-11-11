@@ -29,7 +29,6 @@
 #include <algorithm>
 #include <fstream>
 #include <iterator>
-#include "SurgeMemoryPools.h"
 
 #include "sst/basic-blocks/mechanics/endian-ops.h"
 #include "sst/plugininfra/misc_platform.h"
@@ -489,8 +488,6 @@ void SurgeSynthesizer::loadRaw(const void *data, int size, bool preset)
         setParameter01(storage.getPatch().scene[sc].f2_cutoff_is_offset.id,
                        storage.getPatch().scene[sc].f2_cutoff_is_offset.get_value_f01());
     }
-
-    storage.memoryPools->resetAllPools(&storage);
 
     for (int sc = 0; sc < n_scenes; ++sc)
     {

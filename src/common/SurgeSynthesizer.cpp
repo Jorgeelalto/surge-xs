@@ -39,7 +39,6 @@
 #include "libMTSClient.h"
 #endif
 
-#include "SurgeMemoryPools.h"
 
 #include "sst/basic-blocks/mechanics/block-ops.h"
 #include "sst/basic-blocks/dsp/Clippers.h"
@@ -3093,6 +3092,8 @@ bool SurgeSynthesizer::setParameter01(long index, float value, bool external, bo
         case ct_osctype:
         {
             int s = storage.getPatch().param_ptr[index]->scene - 1;
+            if (!isAvailableOscType(storage.getPatch().param_ptr[index]->val.i))
+                storage.getPatch().param_ptr[index]->val.i = ot_classic;
 
             if (storage.getPatch().param_ptr[index]->val.i != oldval.i)
             {
@@ -3497,6 +3498,14 @@ bool SurgeSynthesizer::loadOscalgos()
             auto &osc_st = storage.getPatch().scene[s].osc[i];
             if (osc_st.queue_type > -1)
             {
+                if (!isAvailableOscType(osc_st.queue_type))
+                {
+                    storage.reportError("The requested oscillator is no longer available.",
+                                        "Unavailable Oscillator");
+                    osc_st.queue_type = -1;
+                    osc_st.queue_xmldata = nullptr;
+                    continue;
+                }
                 algosChanged = true;
                 // clear assigned modulation, and echo to OSC if we change osc type, see issue #2224
                 if (osc_st.queue_type != osc_st.type.val.i)
@@ -3594,13 +3603,6 @@ bool SurgeSynthesizer::loadOscalgos()
                         (it.second)(sb.str(), rt, sx);
                 }
 
-                /*
-                 * Some oscillator types can change display when you change values
-                 */
-                if (osc_st.type.val.i == ot_modern)
-                {
-                    refresh_editor = true;
-                }
                 osc_st.queue_xmldata = 0;
             }
         }
@@ -3608,7 +3610,6 @@ bool SurgeSynthesizer::loadOscalgos()
 
     if (algosChanged)
     {
-        storage.memoryPools->resetOscillatorPools(&storage);
         for (int s = 0; s < n_scenes; ++s)
         {
             for (int o = 0; o < n_oscs; ++o)

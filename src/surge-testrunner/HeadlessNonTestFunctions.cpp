@@ -181,11 +181,11 @@ void standardCutoffCurve(int ft, int sft, std::ostream &os)
         surge->storage.getPatch().scene[0].filterunit[0].cutoff.val.f = 0;
         surge->storage.getPatch().scene[0].filterunit[0].resonance.val.f = res;
 
-        surge->storage.getPatch().scene[0].osc[0].type.val.i = ot_sine;
+        surge->storage.getPatch().scene[0].osc[0].queue_type = ot_FM3;
 
         surge->storage.getPatch().scene[1].filterunit[0].type.val.i = sst::filters::fut_none;
         surge->storage.getPatch().scene[1].filterunit[0].subtype.val.i = 0;
-        surge->storage.getPatch().scene[1].osc[0].type.val.i = ot_sine;
+        surge->storage.getPatch().scene[1].osc[0].queue_type = ot_FM3;
 
         auto proc = [surge](int n) {
             for (int i = 0; i < n; ++i)

@@ -144,32 +144,12 @@ add_library(${PROJECT_NAME}
   dsp/modulators/LFOModulationSource.h
   dsp/modulators/MSEGModulationHelper.cpp
   dsp/modulators/MSEGModulationHelper.h
-  dsp/oscillators/AliasOscillator.cpp
-  dsp/oscillators/AliasOscillator.h
-  dsp/oscillators/AudioInputOscillator.cpp
-  dsp/oscillators/AudioInputOscillator.h
   dsp/oscillators/ClassicOscillator.cpp
   dsp/oscillators/ClassicOscillator.h
-  dsp/oscillators/FM2Oscillator.cpp
-  dsp/oscillators/FM2Oscillator.h
   dsp/oscillators/FM3Oscillator.cpp
   dsp/oscillators/FM3Oscillator.h
-  dsp/oscillators/ModernOscillator.cpp
-  dsp/oscillators/ModernOscillator.h
   dsp/oscillators/OscillatorBase.h
   dsp/oscillators/OscillatorCommonFunctions.h
-  dsp/oscillators/SampleAndHoldOscillator.cpp
-  dsp/oscillators/SampleAndHoldOscillator.h
-  dsp/oscillators/SineOscillator.cpp
-  dsp/oscillators/SineOscillator.h
-  dsp/oscillators/StringOscillator.cpp
-  dsp/oscillators/StringOscillator.h
-  dsp/oscillators/TwistOscillator.cpp
-  dsp/oscillators/TwistOscillator.h
-  dsp/oscillators/WavetableOscillator.cpp
-  dsp/oscillators/WavetableOscillator.h
-  dsp/oscillators/WindowOscillator.cpp
-  dsp/oscillators/WindowOscillator.h
   dsp/utilities/DSPUtils.h
   dsp/utilities/SSEComplex.h
   dsp/utilities/SSESincDelayLine.h

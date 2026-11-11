@@ -106,7 +106,6 @@
 #include <cctype>
 #include <ranges>
 #include "version.h"
-#include "ModernOscillator.h"
 #ifndef SURGE_SKIP_ODDSOUND_MTS
 #include "libMTSClient.h"
 #include "libMTSMaster.h"
@@ -3015,29 +3014,7 @@ void SurgeGUIEditor::toggleTuning()
     this->synth->refresh_editor = true;
 }
 
-void SurgeGUIEditor::wtscriptFileDropped(const string &fn)
-{
-    int scene = current_scene;
-    int osc = current_osc[current_scene];
-    undoManager()->pushWavetable(scene, osc);
-
-    OscillatorStorage *oscdata = &synth->storage.getPatch().scene[scene].osc[osc];
-
-    // Parse on the message thread, then defer the generation to the worker. The poll tail
-    // (pollWtGenJobs) sets current_id and activates the wavetable oscillator type via queue_type
-    // once the generate lands.
-    if (!Surge::WavetableScript::LuaWTEvaluator::loadWtscriptMetadata(string_to_path(fn),
-                                                                      &synth->storage, oscdata))
-    {
-        return;
-    }
-
-    synth->storage.getPatch().dawExtraState.editor.clearWTSEStateInScene(scene, osc);
-
-    submitWtGenJob(scene, osc, -1, /*retypeToWavetable*/ true);
-}
-
-void SurgeGUIEditor::submitWtGenJob(int scene, int osc, int currentId, bool retypeToWavetable)
+void SurgeGUIEditor::submitWtGenJob(int scene, int osc, int currentId)
 {
     namespace WS = Surge::WavetableScript;
     auto req = WS::makeLiveGenerateRequest(&synth->storage, scene, osc);
@@ -3049,7 +3026,7 @@ void SurgeGUIEditor::submitWtGenJob(int scene, int osc, int currentId, bool rety
     auto fut = synth->storage.wtGenService->submit(std::move(req));
 
     // Update WT id and name early so the OWD menu updates before WT script generation finishes.
-    if (!retypeToWavetable && currentId >= 0 && currentId < (int)synth->storage.wt_list.size())
+    if (currentId >= 0 && currentId < (int)synth->storage.wt_list.size())
     {
         auto &oscRef = synth->storage.getPatch().scene[scene].osc[osc];
         oscRef.wt.current_id = currentId;
@@ -3062,7 +3039,6 @@ void SurgeGUIEditor::submitWtGenJob(int scene, int osc, int currentId, bool rety
     pending.scene = scene;
     pending.osc = osc;
     pending.currentId = currentId;
-    pending.retypeToWavetable = retypeToWavetable;
     pendingWtGenJobs.push_back(std::move(pending));
 }
 
@@ -3398,23 +3374,14 @@ void SurgeGUIEditor::pollWtGenJobs()
         {
             oscdata->wavetable_display_name = r.wtName;
             oscdata->wt.current_id = it->currentId;
-            if (it->retypeToWavetable)
+            oscdata->wt.refresh_display = true;
+            oscdata->wt.force_refresh_display = true;
+            if (auto ol =
+                    getOverlayIfOpenAs<Surge::Overlays::WavetableScriptEditor>(WTS_EDITOR))
             {
-                // Drop: activate the wavetable oscillator type (also refreshes OWD/editor)
-                oscdata->queue_type = ot_wavetable;
-            }
-            else
-            {
-                // Menu: type is already wavetable, just refresh
-                oscdata->wt.refresh_display = true;
-                oscdata->wt.force_refresh_display = true;
-                if (auto ol =
-                        getOverlayIfOpenAs<Surge::Overlays::WavetableScriptEditor>(WTS_EDITOR))
+                if (ol->scene == it->scene && ol->osc_id == it->osc)
                 {
-                    if (ol->scene == it->scene && ol->osc_id == it->osc)
-                    {
-                        ol->refreshPreview();
-                    }
+                    ol->refreshPreview();
                 }
             }
         }
@@ -5610,9 +5577,8 @@ bool SurgeGUIEditor::canDropTarget(const juce::String &fname)
 
     auto fullPath = juceStringToFSPath(fname);
 
-    constexpr std::array<std::string_view, 9> allowedExtensions{
-        ".scl"sv, ".kbm"sv,       ".wav"sv,        ".wt"sv, ".wtscript"sv,
-        ".fxp"sv, ".modpreset"sv, ".surge-skin"sv, ".zip"sv};
+    constexpr std::array<std::string_view, 6> allowedExtensions{
+        ".scl"sv, ".kbm"sv, ".fxp"sv, ".modpreset"sv, ".surge-skin"sv, ".zip"sv};
 
     std::string ext = fullPath.extension().u8string();
 
@@ -5631,18 +5597,7 @@ bool SurgeGUIEditor::onDrop(const juce::String &fname)
     std::ranges::transform(ext, ext.begin(),
                            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-    if (ext == ".wav" || ext == ".wt")
-    {
-        synth->storage.getPatch()
-            .scene[current_scene]
-            .osc[current_osc[current_scene]]
-            .wt.queue_filename = fullPath.u8string();
-    }
-    else if (ext == ".wtscript")
-    {
-        wtscriptFileDropped(fullPath.u8string());
-    }
-    else if (ext == ".scl")
+    if (ext == ".scl")
     {
         scaleFileDropped(fullPath.u8string());
     }
@@ -7653,7 +7608,7 @@ void SurgeGUIEditor::loadWavetableScript(int id, const fs::path &location, Surge
 
     // Defer generation to the worker; the poll tail sets current_id + refresh flags once the
     // generate lands.
-    submitWtGenJob(scene, osc, id, /*retypeToWavetable*/ false);
+    submitWtGenJob(scene, osc, id);
 
     // Refresh the editor's script immediately from the just-parsed script.
     if (auto ol = getOverlayIfOpenAs<Surge::Overlays::WavetableScriptEditor>(WTS_EDITOR))

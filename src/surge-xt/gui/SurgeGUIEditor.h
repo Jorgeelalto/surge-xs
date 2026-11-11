@@ -367,22 +367,16 @@ class SurgeGUIEditor : public Surge::GUI::IComponentTagValue::Listener,
     void toggleTuning();
     void scaleFileDropped(const juce::String &fname);
     void mappingFileDropped(const juce::String &fname);
-    void wtscriptFileDropped(const std::string &fn);
-
-    // Background wavetable generates from drop/menu load. idle() polls these and runs the
-    // activation tail on completion.
+    // Background wavetable generates from menu load are polled from idle().
     struct PendingWtGenJob
     {
         std::future<Surge::WavetableScript::WtGenJobResponse> future;
         Surge::WavetableScript::WtGenInputs inputs; // submit-time inputs, cached with the frames
         int scene{0}, osc{0}, currentId{-1};
 
-        // How the poll tail activates the finished generate. A drop can land on a non-Wavetable
-        // osc, so true retypes it to Wavetable via queue_type.
-        bool retypeToWavetable{false};
     };
     std::vector<PendingWtGenJob> pendingWtGenJobs;
-    void submitWtGenJob(int scene, int osc, int currentId, bool retypeToWavetable);
+    void submitWtGenJob(int scene, int osc, int currentId);
     void pollWtGenJobs();
     void idleWtGenService();
 

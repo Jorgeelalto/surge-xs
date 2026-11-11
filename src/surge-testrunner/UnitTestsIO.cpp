@@ -32,8 +32,6 @@
 
 #include "UnitTestUtilities.h"
 #include "WavetableScriptEvaluator.h"
-#include "dsp/oscillators/WavetableOscillator.h"
-#include "dsp/oscillators/WindowOscillator.h"
 #include "PatchFileHeaderStructs.h"
 #include "FxPresetAndClipboardManager.h"
 #include "sst/basic-blocks/mechanics/endian-ops.h"
@@ -247,6 +245,51 @@ TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
             REQUIRE(static_cast<bool>(surge->fx[0]) == available);
 #endif
         }
+    }
+    storage.removeErrorListener(&errors);
+}
+
+TEST_CASE("Unavailable oscillators cannot be loaded", "[io][osc]")
+{
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    auto &storage = surge->storage;
+    auto &patch = storage.getPatch();
+    auto &osc = patch.scene[0].osc[0];
+    WavErrorCatcher errors;
+    storage.addErrorListener(&errors);
+
+    SECTION("Patch")
+    {
+        const auto first = osc.type.get_storage_name();
+        const auto second = patch.scene[0].osc[1].type.get_storage_name();
+        auto xml = fmt::format("<patch><parameters><{0} value=\"2\"/><{1} value=\"5\"/>"
+                               "</parameters></patch>",
+                               first, second);
+        patch.load_xml(xml.c_str(), static_cast<int>(xml.size()), false);
+        REQUIRE(osc.type.val.i == ot_classic);
+        REQUIRE(patch.scene[0].osc[1].type.val.i == ot_FM3);
+        REQUIRE(errors.message.find("replaced with Classic") != std::string::npos);
+    }
+
+    SECTION("Automation")
+    {
+        for (int type = 0; type < n_osc_types; ++type)
+        {
+            surge->setParameter01(osc.type.id, static_cast<float>(type) / (n_osc_types - 1),
+                                  false);
+            surge->process();
+            REQUIRE(osc.type.val.i == (type == ot_FM3 ? ot_FM3 : ot_classic));
+        }
+    }
+
+    SECTION("Queued type")
+    {
+        osc.queue_type = ot_wavetable;
+        surge->process();
+        REQUIRE(osc.type.val.i == ot_classic);
+        REQUIRE(osc.queue_type == -1);
+        REQUIRE(errors.message.find("no longer available") != std::string::npos);
     }
     storage.removeErrorListener(&errors);
 }
@@ -889,130 +932,6 @@ TEST_CASE("DAW Streaming And Unstreaming", "[io][mpe][tun]")
         }
         REQUIRE(surgeDest->storage.controllers[2] == 75);
         REQUIRE(surgeDest->storage.controllers[4] == 79);
-    }
-}
-
-TEST_CASE("Stream Wavetable Names", "[io]")
-{
-    SECTION("Name Restored For Old Patch")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-        REQUIRE(surge->loadPatchByPath("resources/test-data/patches/Church.fxp", -1, "Test"));
-        REQUIRE(std::string(surge->storage.getPatch().scene[0].osc[0].wavetable_display_name) ==
-                "(Patch Wavetable)");
-    }
-
-    SECTION("Name Set When Loading a Factory Patch")
-    {
-        auto surge = Surge::Headless::createSurge(44100, true);
-        REQUIRE(surge);
-        REQUIRE(surge->storage.wt_list.size() > 0);
-
-        auto patch = &(surge->storage.getPatch());
-        patch->scene[0].osc[0].type.val.i = ot_wavetable;
-        for (int i = 0; i < 2; ++i)
-            surge->process();
-
-        for (int i = 0; i < 40; ++i)
-        {
-            int wti;
-            // Exclude .wtscript files
-            do
-            {
-                wti = rand() % surge->storage.wt_list.size();
-            } while (surge->storage.wt_list[wti].path.extension() == ".wtscript");
-            INFO("Loading random wavetable " << wti << " at run " << i);
-
-            surge->storage.load_wt(wti, &patch->scene[0].osc[0].wt, &patch->scene[0].osc[0]);
-            REQUIRE(std::string(patch->scene[0].osc[0].wavetable_display_name) ==
-                    surge->storage.wt_list[wti].name);
-        }
-    }
-
-    SECTION("Name Survives Restore")
-    {
-        auto fromto = [](std::shared_ptr<SurgeSynthesizer> src,
-                         std::shared_ptr<SurgeSynthesizer> dest) {
-            void *d = nullptr;
-            src->populateDawExtraState();
-            auto sz = src->saveRaw(&d);
-            REQUIRE(src->storage.getPatch().dawExtraState.isPopulated);
-
-            dest->loadRaw(d, sz, false);
-            dest->loadFromDawExtraState();
-            REQUIRE(dest->storage.getPatch().dawExtraState.isPopulated);
-
-            // Why does this crash macos?
-            // if(d) free(d);
-        };
-
-        auto surgeS = Surge::Headless::createSurge(44100, true);
-        REQUIRE(surgeS->storage.wt_list.size() > 0);
-
-        auto surgeD = Surge::Headless::createSurge(44100, true);
-        REQUIRE(surgeD);
-
-        for (int i = 0; i < 50; ++i)
-        {
-            auto patch = &(surgeS->storage.getPatch());
-            std::vector<bool> iswts;
-            std::vector<std::string> names;
-
-            for (int s = 0; s < n_scenes; ++s)
-                for (int o = 0; o < n_oscs; ++o)
-                {
-                    bool isWT = 1.0 * rand() / RAND_MAX > 0.7;
-                    iswts.push_back(isWT);
-
-                    auto patch = &(surgeS->storage.getPatch());
-                    if (isWT)
-                    {
-                        patch->scene[s].osc[o].type.val.i = ot_wavetable;
-                        for (int i = 0; i < 2; ++i)
-                            surgeS->process();
-
-                        int wti;
-                        // Exclude .wtscript files
-                        do
-                        {
-                            wti = rand() % surgeS->storage.wt_list.size();
-                        } while (surgeS->storage.wt_list[wti].path.extension() == ".wtscript");
-
-                        surgeS->storage.load_wt(wti, &patch->scene[s].osc[o].wt,
-                                                &patch->scene[s].osc[o]);
-                        REQUIRE(std::string(patch->scene[s].osc[o].wavetable_display_name) ==
-                                surgeS->storage.wt_list[wti].name);
-
-                        if (1.0 * rand() / RAND_MAX > 0.8)
-                        {
-                            auto sn = std::string("renamed blurg ") + std::to_string(rand());
-                            patch->scene[s].osc[o].wavetable_display_name = sn;
-                            REQUIRE(std::string(patch->scene[s].osc[o].wavetable_display_name) ==
-                                    sn);
-                        }
-                        names.push_back(patch->scene[s].osc[o].wavetable_display_name);
-                    }
-                    else
-                    {
-                        patch->scene[s].osc[o].type.val.i = ot_sine;
-                        names.push_back("");
-                    }
-                }
-
-            fromto(surgeS, surgeD);
-            auto patchD = &(surgeD->storage.getPatch());
-
-            int idx = 0;
-            for (int s = 0; s < n_scenes; ++s)
-                for (int o = 0; o < n_oscs; ++o)
-                {
-                    if (iswts[idx])
-                        REQUIRE(std::string(patchD->scene[s].osc[o].wavetable_display_name) ==
-                                names[idx]);
-                    idx++;
-                }
-        }
     }
 }
 
@@ -1728,8 +1647,6 @@ TEST_CASE("Queued Wavetable Reslices Run On The Audio Thread", "[io]")
     REQUIRE(surge.get());
 
     auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-    osc->queue_type = ot_wavetable;
-
     // Let the startup wavetable load settle, so the reslice is the only thing queued
     for (int i = 0; i < 5; ++i)
         surge->process();
@@ -1758,123 +1675,6 @@ TEST_CASE("Queued Wavetable Reslices Run On The Audio Thread", "[io]")
     REQUIRE(wt.flags & wtf_user_modified);
     REQUIRE(osc->wavetable_display_name == "Some Wavetable");
     REQUIRE(wt.refresh_display);
-}
-
-TEST_CASE("A Resliced Wavetable Survives A Patch Round Trip", "[io]")
-{
-    auto surge = Surge::Headless::createSurge(44100);
-    REQUIRE(surge.get());
-
-    auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-    osc->type.val.i = ot_wavetable;
-
-    // The headless storage has no wavetable library, so stand one entry up by hand. The
-    // patch loader re-attaches a nameless-id wavetable to the list entry its display name
-    // matches, and this is the entry a re-sliced table must NOT be re-attached to.
-    Patch entry;
-    entry.name = "Reslice Test WT";
-    entry.path = "reslice-test.wt";
-    surge->storage.wt_list.push_back(entry);
-
-    osc->wavetable_display_name = entry.name;
-
-    auto &wt = osc->wt;
-    buildRampWT(&wt, 8, 64);
-    REQUIRE(wt.Reslice(32, -1, wt.flags | wtf_is_sample | wtf_loop_sample | wtf_user_modified));
-
-    const auto expected = wt.FlattenSource();
-    const auto expectedTables = wt.n_tables;
-
-    void *data = nullptr;
-    auto sz = surge->storage.getPatch().save_patch(&data);
-    REQUIRE(sz > 0);
-    surge->storage.getPatch().load_patch(data, sz, false);
-
-    auto &rt = surge->storage.getPatch().scene[0].osc[0].wt;
-
-    REQUIRE(rt.size == 32);
-    REQUIRE(rt.n_tables == expectedTables);
-    REQUIRE(rt.flags & wtf_is_sample);
-    REQUIRE(rt.flags & wtf_loop_sample);
-    REQUIRE(rt.flags & wtf_user_modified);
-    // Still detached, so undo restores the edit rather than reloading the original file
-    REQUIRE(rt.current_id == -1);
-
-    // ...whereas without the modified bit the same patch does get re-attached, which is
-    // what the bit exists to suppress
-    rt.flags &= ~wtf_user_modified;
-
-    void *plain = nullptr;
-    auto psz = surge->storage.getPatch().save_patch(&plain);
-    REQUIRE(psz > 0);
-    surge->storage.getPatch().load_patch(plain, psz, false);
-
-    REQUIRE(surge->storage.getPatch().scene[0].osc[0].wt.current_id == 0);
-
-    // The patch blob is int16, so this is a lossy but faithful round trip
-    const auto got = rt.FlattenSource();
-    REQUIRE(got.size() == expected.size());
-
-    for (size_t i = 0; i < got.size(); ++i)
-    {
-        REQUIRE(got[i] == Approx(expected[i]).margin(1e-3));
-    }
-}
-
-TEST_CASE("Looped Samples Keep Sounding", "[dsp]")
-{
-    auto playAndMeasureTail = [](bool loop) {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge.get());
-
-        auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-        osc->queue_type = ot_wavetable;
-
-        for (int i = 0; i < 5; ++i)
-            surge->process();
-
-        auto &wt = osc->wt;
-        buildSineWT(&wt, 8, 1024);
-
-        int flags = wt.flags | wtf_is_sample;
-
-        if (loop)
-        {
-            flags |= wtf_loop_sample;
-        }
-
-        REQUIRE(wt.Reslice(-1, -1, flags));
-
-        // Without the play count deform the play count is 1 whatever the unison voices are,
-        // so an unlooped sample plays once and stops. Pinned to a single voice anyway, so
-        // that this measures the loop flag rather than the unison spread.
-        osc->p[WavetableOscillator::wt_unison_voices].val.i = 1;
-
-        surge->playNote(0, 60, 127, 0);
-
-        float tail = 0;
-
-        for (int q = 0; q < 200; ++q)
-        {
-            surge->process();
-
-            if (q > 100)
-            {
-                for (int s = 0; s < BLOCK_SIZE; ++s)
-                    tail += fabs(surge->output[0][s]);
-            }
-        }
-
-        return tail;
-    };
-
-    const auto oneShot = playAndMeasureTail(false);
-    const auto looped = playAndMeasureTail(true);
-
-    // Eight frames at 261 Hz is about 1300 samples, so by block 100 an unlooped sample is
-    // long finished and only the DC blocker's decay is left
-    REQUIRE(looped > 1.f);
-    REQUIRE(oneShot < looped * 0.01f);
 }
 
 TEST_CASE("A Rejected Wavetable Header Leaves The Wavetable Alone", "[io]")
@@ -2055,269 +1855,6 @@ TEST_CASE("Load Patch By Path Preset Semantics", "[io]")
     fs::remove(path);
 }
 
-TEST_CASE("The Sample Play Count Deform Round Trips", "[io]")
-{
-    auto surge = Surge::Headless::createSurge(44100);
-    REQUIRE(surge.get());
-
-    auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-    osc->queue_type = ot_wavetable;
-
-    for (int i = 0; i < 5; ++i)
-        surge->process();
-
-    auto &wt = osc->wt;
-    buildRampWT(&wt, 8, 64);
-    REQUIRE(wt.Reslice(-1, -1, wt.flags | wtf_is_sample | wtf_user_modified));
-
-    auto &voices = osc->p[WavetableOscillator::wt_unison_voices];
-    voices.deform_type = WavetableOscillator::SAMPLE_PLAY_COUNT;
-
-    auto deformAfterRoundTrip = [&](int which) {
-        void *data = nullptr;
-        auto sz = surge->storage.getPatch().save_patch(&data);
-        REQUIRE(sz > 0);
-        surge->storage.getPatch().load_patch(data, sz, false);
-
-        return surge->storage.getPatch()
-            .scene[0]
-            .osc[which]
-            .p[WavetableOscillator::wt_unison_voices]
-            .deform_type;
-    };
-
-    SECTION("through a patch")
-    {
-        REQUIRE(deformAfterRoundTrip(0) == WavetableOscillator::SAMPLE_PLAY_COUNT);
-    }
-
-    SECTION("and stays clear through a patch when it started clear")
-    {
-        voices.deform_type = WavetableOscillator::UNISON_VOICES;
-
-        // A current revision patch must not pick the deform up from the migration
-        REQUIRE(deformAfterRoundTrip(0) == WavetableOscillator::UNISON_VOICES);
-    }
-
-    SECTION("but does not ride along in the exported .wt file")
-    {
-        // The whole point of the deform living on the oscillator: the mode is a property of
-        // the patch, not of the sample data, so it does not travel with the file
-        auto f = fs::temp_directory_path() / "surge_unison_mode_deform.wt";
-        REQUIRE(surge->storage.export_wt_wt_portable(f, &wt, ""));
-
-        Wavetable back;
-        std::string md;
-        REQUIRE(surge->storage.load_wt_wt(path_to_string(f), &back, md));
-
-        REQUIRE(back.flags & wtf_is_sample);
-        REQUIRE(!(back.flags & wtf_user_modified));
-
-        fs::remove(f);
-    }
-
-    SECTION("so two oscillators on the same table can read it differently")
-    {
-        auto *other = &(surge->storage.getPatch().scene[0].osc[1]);
-        other->queue_type = ot_wavetable;
-
-        for (int i = 0; i < 5; ++i)
-            surge->process();
-
-        buildRampWT(&other->wt, 8, 64);
-        REQUIRE(other->wt.Reslice(-1, -1, other->wt.flags | wtf_is_sample));
-        other->p[WavetableOscillator::wt_unison_voices].deform_type =
-            WavetableOscillator::UNISON_VOICES;
-
-        REQUIRE(deformAfterRoundTrip(0) == WavetableOscillator::SAMPLE_PLAY_COUNT);
-        REQUIRE(deformAfterRoundTrip(1) == WavetableOscillator::UNISON_VOICES);
-    }
-}
-
-TEST_CASE("Old Patches Keep Reading Unison Voices As A Sample Play Count", "[io]")
-{
-    // save_patch stamps the current ff_revision into the patch XML. Rewriting it in place is
-    // what puts the loader on the pre-deform migration path; both numbers are the same width,
-    // so the xml size recorded in the patch header stays correct.
-    auto downgradeRevision = [](void *data, size_t sz) {
-        const std::string from = "revision=\"" + std::to_string(ff_revision) + "\"";
-        const std::string to = "revision=\"30\"";
-
-        REQUIRE(from.size() == to.size());
-
-        char *p = (char *)data;
-
-        for (size_t i = 0; i + from.size() <= sz; ++i)
-        {
-            if (memcmp(p + i, from.c_str(), from.size()) == 0)
-            {
-                memcpy(p + i, to.c_str(), to.size());
-                return true;
-            }
-        }
-
-        return false;
-    };
-
-    struct Migrated
-    {
-        int flags;
-        int deform;
-    };
-
-    auto roundTripAsOldPatch = [&](int oscType, int extraFlags, int unisonVoices) {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge.get());
-
-        auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-        osc->type.val.i = oscType;
-        osc->p[WavetableOscillator::wt_unison_voices].val.i = unisonVoices;
-
-        buildRampWT(&osc->wt, 8, 64);
-        REQUIRE(osc->wt.Reslice(-1, -1, osc->wt.flags | extraFlags));
-
-        void *data = nullptr;
-        auto sz = surge->storage.getPatch().save_patch(&data);
-        REQUIRE(sz > 0);
-        REQUIRE(downgradeRevision(data, sz));
-
-        surge->storage.getPatch().load_patch(data, sz, false);
-
-        const auto &loaded = surge->storage.getPatch().scene[0].osc[0];
-
-        return Migrated{(int)loaded.wt.flags,
-                        loaded.p[WavetableOscillator::wt_unison_voices].deform_type};
-    };
-
-    SECTION("a sample gets the deform, so the count keeps meaning plays")
-    {
-        const auto m = roundTripAsOldPatch(ot_wavetable, wtf_is_sample, 3);
-
-        REQUIRE(m.flags & wtf_is_sample);
-        REQUIRE(m.deform == WavetableOscillator::SAMPLE_PLAY_COUNT);
-        // Three plays was three plays then and is three plays now, so nothing pins it
-        REQUIRE(!(m.flags & wtf_loop_sample));
-    }
-
-    SECTION("a voice count of seven or more also gets the loop flag")
-    {
-        // The old countdown stopped decrementing at 7, so these patches were looping forever
-        // rather than playing nine times. Only the loop flag preserves that now that the
-        // whole range is a literal count.
-        const auto m = roundTripAsOldPatch(ot_wavetable, wtf_is_sample, 9);
-
-        REQUIRE(m.deform == WavetableOscillator::SAMPLE_PLAY_COUNT);
-        REQUIRE(m.flags & wtf_loop_sample);
-    }
-
-    SECTION("seven is the boundary")
-    {
-        REQUIRE(roundTripAsOldPatch(ot_wavetable, wtf_is_sample, 7).flags & wtf_loop_sample);
-        REQUIRE(!(roundTripAsOldPatch(ot_wavetable, wtf_is_sample, 6).flags & wtf_loop_sample));
-    }
-
-    SECTION("a wavetable that is not a sample is left alone")
-    {
-        const auto m = roundTripAsOldPatch(ot_wavetable, 0, 9);
-
-        REQUIRE(m.deform == WavetableOscillator::UNISON_VOICES);
-        REQUIRE(!(m.flags & wtf_loop_sample));
-    }
-
-    SECTION("the window oscillator is left alone, since it never played samples")
-    {
-        const auto m = roundTripAsOldPatch(ot_window, wtf_is_sample, 9);
-
-        REQUIRE(m.deform == WavetableOscillator::UNISON_VOICES);
-        REQUIRE(!(m.flags & wtf_loop_sample));
-    }
-}
-
-TEST_CASE("Sample Play Count Covers The Whole Unison Range", "[dsp]")
-{
-    // Eight frames at note 60 works out at roughly 40 to 50 blocks per play, so sixteen
-    // plays finish around block 665 and land well inside the 1200 blocks below.
-    //
-    // Note that "stopped" is not "silent": the oscillator feeds a leaky integrator, so a
-    // finished sample leaves an exponential tail that is still around 1e-2 a hundred blocks
-    // later. The checks below therefore measure a stopped voice against one that is
-    // genuinely still sounding in the same window, rather than against zero.
-    auto energyIn = [](int voices, bool asPlayCount, bool loop, int fromBlock, int toBlock) {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge.get());
-
-        auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-        osc->queue_type = ot_wavetable;
-
-        for (int i = 0; i < 5; ++i)
-            surge->process();
-
-        auto &wt = osc->wt;
-        buildSineWT(&wt, 8, 1024);
-        REQUIRE(wt.Reslice(-1, -1, wt.flags | wtf_is_sample | (loop ? wtf_loop_sample : 0)));
-
-        osc->p[WavetableOscillator::wt_unison_voices].val.i = voices;
-        osc->p[WavetableOscillator::wt_unison_voices].deform_type =
-            asPlayCount ? WavetableOscillator::SAMPLE_PLAY_COUNT
-                        : WavetableOscillator::UNISON_VOICES;
-
-        surge->playNote(0, 60, 127, 0);
-
-        float e = 0;
-
-        for (int q = 0; q < 1200; ++q)
-        {
-            surge->process();
-
-            if (q >= fromBlock && q < toBlock)
-            {
-                for (int s = 0; s < BLOCK_SIZE; ++s)
-                    e += fabs(surge->output[0][s]);
-            }
-        }
-
-        return e;
-    };
-
-    SECTION("a count of two stops after two plays")
-    {
-        const auto stopped = energyIn(2, true, false, 150, 250);
-        const auto sounding = energyIn(9, true, false, 150, 250);
-
-        REQUIRE(energyIn(2, true, false, 0, 40) > 1.f);
-        REQUIRE(sounding > 1.f);
-        REQUIRE(stopped < sounding * 0.01f);
-    }
-
-    SECTION("a count above six is a count, not a license to loop forever")
-    {
-        // The regression guard. The old countdown stopped decrementing at 7, so nine plays
-        // used to sustain indefinitely; they now end around block 390.
-        REQUIRE(energyIn(9, true, false, 150, 250) > 1.f);
-        REQUIRE(energyIn(9, true, false, 1100, 1200) <
-                energyIn(9, true, true, 1100, 1200) * 0.001f);
-    }
-
-    SECTION("the top of the range is still a count")
-    {
-        REQUIRE(energyIn(16, true, false, 400, 500) > 1.f);
-        REQUIRE(energyIn(16, true, false, 1100, 1200) <
-                energyIn(16, true, true, 1100, 1200) * 0.001f);
-    }
-
-    SECTION("the loop flag overrides the count entirely")
-    {
-        REQUIRE(energyIn(2, true, true, 1100, 1200) > 1.f);
-    }
-
-    SECTION("without the deform the count is unison and the sample plays once")
-    {
-        // Nine voices, but nine voices - so it is finished long before nine plays would be
-        REQUIRE(energyIn(9, false, false, 0, 40) > 1.f);
-        REQUIRE(energyIn(9, false, false, 150, 250) < energyIn(9, true, false, 150, 250) * 0.01f);
-    }
-}
-
 TEST_CASE("Sample Wavetables Get Int16 Mipmaps", "[io]")
 {
     // Anything reading the int16 tables and picking a mipmap level from the read rate gets
@@ -2346,165 +1883,5 @@ TEST_CASE("Sample Wavetables Get Int16 Mipmaps", "[io]")
 
         INFO("int16 mipmap level " << level);
         REQUIRE(sum > 0);
-    }
-}
-
-TEST_CASE("The Window Oscillator Plays Samples", "[dsp]")
-{
-    // One frame per grain at the note frequency, so roughly 41 blocks per play at note 60.
-    // "Stopped" is not "silent" - the voice rings down - so stopped cases are measured
-    // against one still sounding in the same window rather than against zero.
-    auto energyIn = [](int voices, bool asPlayCount, bool looped, float morph, int fromBlock,
-                       int toBlock) {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge.get());
-
-        auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-        osc->queue_type = ot_window;
-
-        // Let the type switch land first; it re-runs init_default_values
-        for (int i = 0; i < 5; ++i)
-            surge->process();
-
-        auto &wt = osc->wt;
-        buildSineWT(&wt, 8, 1024);
-        REQUIRE(wt.Reslice(-1, -1, wt.flags | wtf_is_sample | (looped ? wtf_loop_sample : 0)));
-        REQUIRE(wt.SourceFrameCount() == 8);
-
-        osc->p[WindowOscillator::win_morph].val.f = morph;
-        osc->p[WindowOscillator::win_unison_voices].val.i = voices;
-        osc->p[WindowOscillator::win_unison_voices].deform_type =
-            asPlayCount ? WavetableOscillator::SAMPLE_PLAY_COUNT
-                        : WavetableOscillator::UNISON_VOICES;
-
-        // Morph comes through the scene data, so it needs a block to get there
-        for (int i = 0; i < 2; ++i)
-            surge->process();
-
-        surge->playNote(0, 60, 127, 0);
-
-        float e = 0;
-
-        for (int q = 0; q < 1200; ++q)
-        {
-            surge->process();
-
-            if (q >= fromBlock && q < toBlock)
-            {
-                for (int s = 0; s < BLOCK_SIZE; ++s)
-                    e += fabs(surge->output[0][s]);
-            }
-        }
-
-        return e;
-    };
-
-    SECTION("a oneshot sounds once and stops")
-    {
-        REQUIRE(energyIn(1, false, false, 0.f, 0, 40) > 1.f);
-        REQUIRE(energyIn(1, false, false, 0.f, 150, 250) <
-                energyIn(1, false, true, 0.f, 150, 250) * 0.01f);
-    }
-
-    SECTION("a looped sample keeps sounding")
-    {
-        REQUIRE(energyIn(1, false, true, 0.f, 1100, 1200) > 1.f);
-    }
-
-    SECTION("Morph is the start point, so a late start finishes sooner")
-    {
-        // Starting on the last of eight frames leaves about an eighth of the energy
-        const auto fromStart = energyIn(1, false, false, 0.f, 0, 1200);
-        const auto fromLate = energyIn(1, false, false, 0.875f, 0, 1200);
-
-        REQUIRE(fromStart > 1.f);
-        // It does sound, so this is a start point rather than silence
-        REQUIRE(fromLate > 0.1f);
-        REQUIRE(fromLate < fromStart * 0.25f);
-    }
-
-    SECTION("the play count deform applies here too")
-    {
-        REQUIRE(energyIn(4, true, false, 0.f, 100, 150) > 1.f);
-        REQUIRE(energyIn(4, true, false, 0.f, 300, 400) <
-                energyIn(4, true, true, 0.f, 300, 400) * 0.01f);
-    }
-
-    SECTION("without the deform the count is unison and the sample plays once")
-    {
-        REQUIRE(energyIn(4, false, false, 0.f, 0, 40) > 1.f);
-        // Four voices rather than four plays, so it is long finished by then
-        REQUIRE(energyIn(4, false, false, 0.f, 100, 150) <
-                energyIn(4, true, false, 0.f, 100, 150) * 0.01f);
-    }
-}
-
-TEST_CASE("Old Window Oscillator Patches Do Not Turn Into Samples", "[io]")
-{
-    auto roundTripAtRevision = [](int oscType, int revision) {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge.get());
-
-        auto *osc = &(surge->storage.getPatch().scene[0].osc[0]);
-        osc->type.val.i = oscType;
-
-        buildRampWT(&osc->wt, 8, 64);
-        REQUIRE(osc->wt.Reslice(-1, -1, osc->wt.flags | wtf_is_sample | wtf_loop_sample));
-
-        void *data = nullptr;
-        auto sz = surge->storage.getPatch().save_patch(&data);
-        REQUIRE(sz > 0);
-
-        if (revision != ff_revision)
-        {
-            // Same width, so the xml size in the patch header stays correct
-            const std::string from = "revision=\"" + std::to_string(ff_revision) + "\"";
-            const std::string to = "revision=\"" + std::to_string(revision) + "\"";
-
-            REQUIRE(from.size() == to.size());
-
-            char *p = (char *)data;
-            bool found = false;
-
-            for (size_t i = 0; i + from.size() <= sz && !found; ++i)
-            {
-                if (memcmp(p + i, from.c_str(), from.size()) == 0)
-                {
-                    memcpy(p + i, to.c_str(), to.size());
-                    found = true;
-                }
-            }
-
-            REQUIRE(found);
-        }
-
-        surge->storage.getPatch().load_patch(data, sz, false);
-
-        return surge->storage.getPatch().scene[0].osc[0].wt.flags;
-    };
-
-    SECTION("a pre-feature window oscillator patch has the sample flags cleared")
-    {
-        // These sounded as wavetables, so honoring the flag would make them oneshots
-        const auto flags = roundTripAtRevision(ot_window, 30);
-
-        REQUIRE(!(flags & wtf_is_sample));
-        REQUIRE(!(flags & wtf_loop_sample));
-    }
-
-    SECTION("a current revision window oscillator patch keeps them")
-    {
-        const auto flags = roundTripAtRevision(ot_window, ff_revision);
-
-        REQUIRE(flags & wtf_is_sample);
-        REQUIRE(flags & wtf_loop_sample);
-    }
-
-    SECTION("the wavetable oscillator is not caught by the window migration")
-    {
-        const auto flags = roundTripAtRevision(ot_wavetable, 30);
-
-        REQUIRE(flags & wtf_is_sample);
-        REQUIRE(flags & wtf_loop_sample);
     }
 }

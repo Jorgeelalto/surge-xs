@@ -27,7 +27,6 @@
 
 #include "SurgeStorage.h"
 #include "Oscillator.h"
-#include "WavetableOscillator.h"
 #include "SurgeParamConfig.h"
 #include "Effect.h"
 #include "MSEGModulationHelper.h"
@@ -754,17 +753,6 @@ SurgePatch::SurgePatch(SurgeStorage *storage)
     } lfoSliderName;
 
     // Assign the dynamic deactivation handlers
-    static struct OscAudioInDeact : public ParameterDynamicDeactivationFunction
-    {
-        bool getValue(const Parameter *p) const override
-        {
-            auto cge = p->ctrlgroup_entry;
-            auto osc = &(p->storage->getPatch().scene[p->scene - 1].osc[cge]);
-
-            return osc->type.val.i == ot_audioinput;
-        }
-    } oscAudioInDeact;
-
     static struct LfoRatePhaseDeact : public ParameterDynamicDeactivationFunction
     {
         bool getValue(const Parameter *p) const override
@@ -804,15 +792,6 @@ SurgePatch::SurgePatch(SurgeStorage *storage)
 
     for (int sc = 0; sc < n_scenes; ++sc)
     {
-        // TODO: Don't forget to add osc phase here once we add it in XT 2.0!
-        for (int o = 0; o < n_oscs; ++o)
-        {
-            scene[sc].osc[o].pitch.dynamicDeactivation = &oscAudioInDeact;
-            scene[sc].osc[o].octave.dynamicDeactivation = &oscAudioInDeact;
-            scene[sc].osc[o].keytrack.dynamicDeactivation = &oscAudioInDeact;
-            scene[sc].osc[o].retrigger.dynamicDeactivation = &oscAudioInDeact;
-        }
-
         for (int lf = 0; lf < n_lfos; ++lf)
         {
             scene[sc].lfo[lf].start_phase.dynamicDeactivation = &lfoRatePhaseDeact;
@@ -1289,36 +1268,6 @@ void SurgePatch::load_patch(const void *data, int datasize, bool preset)
                                 scene[sc].osc[osc].wt.current_id = i;
                             }
                         }
-                    }
-
-                    // Before the play count deform existed, a sample in the Wavetable
-                    // oscillator always read the unison voice count as a play count and
-                    // collapsed to one voice. Record that on load so these patches keep
-                    // playing the way they always have; an oscillator saved from here on
-                    // carries its own deform and gets real unison by default.
-                    if (streamingRevision <= 30 && scene[sc].osc[osc].type.val.i == ot_wavetable &&
-                        (scene[sc].osc[osc].wt.flags & wtf_is_sample))
-                    {
-                        scene[sc].osc[osc].p[WavetableOscillator::wt_unison_voices].deform_type =
-                            WavetableOscillator::SAMPLE_PLAY_COUNT;
-
-                        // The old countdown stopped decrementing at 7, so any voice count
-                        // from there up looped forever rather than playing that many times.
-                        // The count now means what it says across its whole range, so the
-                        // patches that were relying on that need the loop flag to keep
-                        // sustaining.
-                        if (scene[sc].osc[osc].p[WavetableOscillator::wt_unison_voices].val.i >= 7)
-                        {
-                            scene[sc].osc[osc].wt.flags |= wtf_loop_sample;
-                        }
-                    }
-
-                    // These sounded as wavetables, because the Window oscillator ignored the
-                    // flag, so honoring it now would turn them into oneshots
-                    if (streamingRevision <= 30 && scene[sc].osc[osc].type.val.i == ot_window &&
-                        (scene[sc].osc[osc].wt.flags & wtf_is_sample))
-                    {
-                        scene[sc].osc[osc].wt.flags &= ~(wtf_is_sample | wtf_loop_sample);
                     }
 
                     dr += ph->wtsize[sc][osc];
@@ -2309,6 +2258,25 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
         }
     }
 
+    bool removedOscillator = false;
+    for (auto &sc : scene)
+    {
+        for (auto &osc : sc.osc)
+        {
+            if (!isAvailableOscType(osc.type.val.i))
+            {
+                osc.type.val.i = ot_classic;
+                removedOscillator = true;
+            }
+        }
+    }
+    if (removedOscillator)
+    {
+        storage->reportError("This patch used one or more oscillators which are no longer "
+                             "available. They have been replaced with Classic.",
+                             "Unavailable Oscillators");
+    }
+
     bool removedEffect = false;
     for (auto &effect : fx)
     {
@@ -2613,55 +2581,6 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
 
     if (revision <= 27)
     {
-        // Sine Osc adds waveforms
-        for (auto &sc : scene)
-        {
-            for (auto &o : sc.osc)
-            {
-                if (o.type.val.i == ot_sine)
-                {
-                    auto shp = o.p[0].val.i;
-                    if (shp >= 1 && shp <= 7)
-                    {
-                        if (shp % 2 == 1)
-                        {
-                            auto q = (shp - 1) / 2 + 28;
-                            o.p[0].val.i = q;
-                        }
-                    }
-                }
-
-                // adjust tuning by 4.61048 cents
-                // see GitHub issue #8049
-                // TODO: This won't be necessary in XT2.0, so can be removed then!
-                if (o.type.val.i == ot_twist)
-                {
-                    if (o.pitch.absolute)
-                    {
-                        if (o.pitch.extend_range)
-                        {
-                            o.pitch.val.f *= 1.00022222222222222166f;
-                        }
-                        else
-                        {
-                            o.pitch.val.f *= 1.00266666666666666f;
-                        }
-                    }
-                    else
-                    {
-                        if (o.pitch.extend_range)
-                        {
-                            o.pitch.val.f += 0.0038420666666666666f;
-                        }
-                        else
-                        {
-                            o.pitch.val.f += 0.0461048f;
-                        }
-                    }
-                }
-            }
-        }
-
         for (auto &f : fx)
         {
             if (f.type.val.i == fxt_ringmod)

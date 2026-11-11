@@ -49,7 +49,6 @@
 #include "FxPresetAndClipboardManager.h"
 #include "ModulatorPresetManager.h"
 #include "MTSESPTuning.h"
-#include "SurgeMemoryPools.h"
 #include "sst/basic-blocks/tables/SincTableProvider.h"
 
 // FIXME probably remove this when we remove the hardcoded hack below
@@ -614,7 +613,6 @@ SurgeStorage::SurgeStorage(const SurgeStorage::SurgeStorageConfig &config) : oth
     {
         reportError(e.what(), "Filesystem Error");
     }
-    memoryPools = std::make_unique<Surge::Memory::SurgeMemoryPools>(this);
 }
 
 void SurgeStorage::initializeUserDataPaths()
@@ -1517,10 +1515,6 @@ void SurgeStorage::perform_queued_wtloads()
                 }
                 else if (patch.scene[sc].osc[o].wt.queue_filename[0])
                 {
-                    if (!(uses_wavetabledata(patch.scene[sc].osc[o].type.val.i)))
-                    {
-                        patch.scene[sc].osc[o].queue_type = ot_wavetable;
-                    }
                     int wtidx = -1, ct = 0;
                     for (const auto &wti : wt_list)
                     {

@@ -315,6 +315,8 @@ enum osc_type
     n_osc_types,
 };
 
+inline bool isAvailableOscType(int type) { return type == ot_classic || type == ot_FM3; }
+
 const char osc_type_names[n_osc_types][24] = {"Classic",     "Sine",   "Wavetable", "S&H Noise",
                                               "Audio Input", "Sine FM", "FM2",       "Window",
                                               "Modern",      "String", "Twist",     "Alias",
@@ -1510,10 +1512,6 @@ struct FxUserPreset;
 struct FxChainUserPreset;
 struct ModulatorPreset;
 } // namespace Storage
-namespace Memory
-{
-struct SurgeMemoryPools;
-}
 namespace Formula
 {
 struct GlobalData;
@@ -2133,8 +2131,6 @@ class alignas(16) SurgeStorage
   public:
     // whether to skip loading, desired while exporting manifests. Only used by LV2 currently.
     static bool skipLoadWtAndPatch;
-
-    std::unique_ptr<Surge::Memory::SurgeMemoryPools> memoryPools;
 
 /*
  * An RNG which is decoupled from the non-Surge global state and is threadsafe.

@@ -25,18 +25,9 @@
 #include "sst/basic-blocks/dsp/FastMath.h"
 #include <cmath>
 
-#include "AliasOscillator.h"
-#include "AudioInputOscillator.h"
 #include "ClassicOscillator.h"
-#include "FM2Oscillator.h"
 #include "FM3Oscillator.h"
-#include "ModernOscillator.h"
-#include "SampleAndHoldOscillator.h"
-#include "SineOscillator.h"
-#include "StringOscillator.h"
-#include "TwistOscillator.h"
 #include "WavetableOscillator.h"
-#include "WindowOscillator.h"
 #include <utility>
 
 using namespace std;
@@ -113,7 +104,7 @@ SampleUnisonDetuneDeact sampleUnisonDetuneDeact;
 } // namespace Surge
 
 Oscillator *spawn_osc(int osctype, SurgeStorage *storage, OscillatorStorage *oscdata,
-                      pdata *localcopy, pdata *localcopyUnmod, unsigned char *onto)
+                      pdata *localcopy, pdata *, unsigned char *onto)
 {
     static bool checkSizes = true;
     if (checkSizes)
@@ -123,17 +114,7 @@ Oscillator *spawn_osc(int osctype, SurgeStorage *storage, OscillatorStorage *osc
 // sizeof(x));
 #define S(x) mx = std::max(mx, sizeof(x));
         S(ClassicOscillator);
-        S(WavetableOscillator);
-        S(WindowOscillator);
-        S(SineOscillator);
-        S(SampleAndHoldOscillator);
-        S(AudioInputOscillator);
-        S(FM2Oscillator);
         S(FM3Oscillator);
-        S(ModernOscillator);
-        S(StringOscillator);
-        S(TwistOscillator);
-        S(AliasOscillator);
 
         checkSizes = false;
 
@@ -156,43 +137,16 @@ Oscillator *spawn_osc(int osctype, SurgeStorage *storage, OscillatorStorage *osc
         }
     }
 
-    Oscillator *osc = 0;
     switch (osctype)
     {
     case ot_classic:
         return new (onto) ClassicOscillator(storage, oscdata, localcopy);
-    case ot_wavetable:
-        return new (onto) WavetableOscillator(storage, oscdata, localcopy, localcopyUnmod);
-    case ot_window:
-    {
-        // In the event we are misconfigured, window oscillator will segfault. If you still play
-        // after clicking through 100 warnings, let's just give you a sine
-        if (storage && storage->WindowWT.size == 0)
-            return new (onto) SineOscillator(storage, oscdata, localcopy);
-
-        return new (onto) WindowOscillator(storage, oscdata, localcopy);
-    }
-    case ot_shnoise:
-        return new (onto) SampleAndHoldOscillator(storage, oscdata, localcopy);
-    case ot_audioinput:
-        return new (onto) AudioInputOscillator(storage, oscdata, localcopy);
     case ot_FM3:
         return new (onto) FM3Oscillator(storage, oscdata, localcopy);
-    case ot_FM2:
-        return new (onto) FM2Oscillator(storage, oscdata, localcopy);
-    case ot_modern:
-        return new (onto) ModernOscillator(storage, oscdata, localcopy);
-    case ot_string:
-        return new (onto) StringOscillator(storage, oscdata, localcopy);
-    case ot_twist:
-        return new (onto) TwistOscillator(storage, oscdata, localcopy);
-    case ot_alias:
-        return new (onto) AliasOscillator(storage, oscdata, localcopy);
-    case ot_sine:
     default:
-        return new (onto) SineOscillator(storage, oscdata, localcopy);
+        std::cerr << "Unavailable oscillator type: " << osctype << std::endl;
+        return nullptr;
     }
-    return osc;
 }
 
 Oscillator::Oscillator(SurgeStorage *storage, OscillatorStorage *oscdata, pdata *localcopy)

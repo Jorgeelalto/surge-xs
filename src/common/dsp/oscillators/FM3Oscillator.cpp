@@ -81,8 +81,8 @@ void FM3Oscillator::process_block_internal(float pitch, float drift, float fmdep
 
     /*
      * Ramp the carrier's phase increment across the block, centered on this block's omega, so
-     * that pitch modulation doesn't put sidebands at the block rate. See SineOscillator for why
-     * the ramp is centered. The modulators are ramped the same way inside SurgeQuadrOscRamped.
+     * that pitch modulation doesn't put sidebands at the block rate. The modulators are ramped
+     * the same way inside SurgeQuadrOscRamped.
      */
     if (!omegaPriorValid)
     {

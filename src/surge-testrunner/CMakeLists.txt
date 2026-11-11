@@ -15,7 +15,6 @@ add_executable(${PROJECT_NAME}
   UnitTestUtilities.h
   UnitTests.cpp
   UnitTestsDSP.cpp
-  UnitTestsGOLDEN.cpp
   UnitTestsFLT.cpp
   UnitTestsFX.cpp
   UnitTestsINFRA.cpp

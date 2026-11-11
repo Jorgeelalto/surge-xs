@@ -480,10 +480,7 @@ bool Parameter::is_discrete_selection() const
     case ct_vocoder_bandcount:
     case ct_nimbusmode:
     case ct_nimbusquality:
-    case ct_stringosc_excitation_model:
-    case ct_twist_engine:
     case ct_ensemble_stages:
-    case ct_alias_wave:
     case ct_wstype:
     case ct_mscodec:
     case ct_reverbshape:
@@ -502,7 +499,6 @@ bool Parameter::is_nonlocal_on_change() const
 {
     switch (ctrltype)
     {
-    case ct_twist_engine:
     case ct_phaser_stages:
     case ct_nimbusmode:
     case ct_mscodec:
@@ -548,7 +544,6 @@ void Parameter::set_user_data(ParamUserData *ud)
         }
         break;
     case ct_filtertype:
-    case ct_alias_wave:
     case ct_wstype:
     case ct_distortion_waveshape:
         if (dynamic_cast<ParameterDiscreteIndexRemapper *>(ud))
@@ -1191,12 +1186,6 @@ void Parameter::set_type(int ctrltype)
         val_max.i = 6; // sin, tri, ramp, saw, square, noise, s&h
         val_default.i = 0;
         break;
-    case ct_twist_engine:
-        valtype = vt_int;
-        val_min.i = 0;
-        val_max.i = 15;
-        val_default.i = 0;
-        break;
     case ct_ensemble_stages:
     {
 #if defined(_M_ARM64EC)
@@ -1211,24 +1200,6 @@ void Parameter::set_type(int ctrltype)
         val_max.i = ensemble_stage_count() - 1;
         val_default.i = 0;
 #endif
-        break;
-    }
-    case ct_stringosc_excitation_model:
-    {
-        extern int stringosc_excitations_count();
-        valtype = vt_int;
-        val_min.i = 0;
-        val_max.i = stringosc_excitations_count() - 1;
-        val_default.i = 0;
-        break;
-    }
-    case ct_alias_wave:
-    {
-        extern int alias_waves_count();
-        valtype = vt_int;
-        val_min.i = 0;
-        val_max.i = alias_waves_count() - 1;
-        val_default.i = 0;
         break;
     }
     case ct_alias_mask:
@@ -3849,7 +3820,7 @@ std::string Parameter::get_display(bool external, float ef) const
             break;
         }
         case ct_osctype:
-            txt = osc_type_names[limit_range(i, 0, (int)n_osc_types - 1)];
+            txt = isAvailableOscType(i) ? osc_type_names[i] : "Unavailable";
             break;
         case ct_wt2window:
             txt = window_names[limit_range(i, 0, 8)];
@@ -4155,25 +4126,6 @@ std::string Parameter::get_display(bool external, float ef) const
             }
         }
         break;
-        case ct_stringosc_excitation_model:
-        {
-            extern std::string stringosc_excitation_name(int);
-            txt = stringosc_excitation_name(i);
-        }
-        break;
-        case ct_alias_wave:
-        {
-            extern const char *alias_wave_name[];
-            extern int alias_waves_count();
-            txt = alias_wave_name[std::max(0, std::min(i, alias_waves_count() - 1))];
-        }
-        break;
-        case ct_twist_engine:
-        {
-            extern std::string twist_engine_name(int);
-            txt = twist_engine_name(i);
-        }
-        break;
         case ct_ensemble_stages:
         {
 #if defined(_M_ARM64EC)
@@ -4455,9 +4407,6 @@ bool Parameter::can_be_nondestructively_modulated() const
     case ct_sineoscmode:
     case ct_sinefmlegacy:
     case ct_fmratio_int:
-    case ct_stringosc_excitation_model:
-    case ct_twist_engine:
-    case ct_alias_wave:
     case ct_fmconfig:
     case ct_wstype:
     case ct_fbconfig:

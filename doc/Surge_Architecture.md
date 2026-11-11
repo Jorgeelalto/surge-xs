@@ -36,6 +36,13 @@ invalidate them.
 `SurgeGUIEditor` works with the parameter set. Its `idle` thread reflects external
 changes, such as changes delivered by the host, in the UI.
 
+The available oscillator types are Classic and FM3 (shown as Sine FM). Their original
+type IDs remain unchanged. Other oscillator types in loaded patches are replaced with
+Classic with a warning; automation targeting an unavailable type selects Classic.
+Wavetable file drops are disabled because no wavetable oscillator is available.
+Legacy oscillator IDs and some unused GUI definitions remain for patch and interface
+compatibility; the other oscillator DSP implementations are not built.
+
 ## Voices and MPE
 
 Voice allocation and stealing support multiple polyphony modes and MPE. Voices are
