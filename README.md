@@ -5,6 +5,24 @@ Johanson at [Vember Audio](http://vemberaudio.se).
 
 This readme serves as the root of developer documentation for Surge XT, which for now is OK for XS too.
 
+## Roadmap
+
+- [ ] Remove Surge FX.
+- [ ] Remove Surge Rack.
+- [ ] Select effects, filters and oscillators to keep.
+   - Wanted FXs:
+   - Wanted filters:
+   - Wanted oscillators:
+- [ ] Remove unwanted FXs, filters and oscillators from the codebase and from the UI.
+- [ ] Simplify waveshaper.
+- [ ] Simplify FX chain. Hardcode 3 serial FXs (chorus, delay and reverb).
+- [ ] Simplify filter routing, only one filter.
+- [ ] Simplify oscillator section, only two oscillators.
+- [ ] Simplify modulations (TBD).
+- [ ] Reorder GUI items. Make space for visualizations.
+- [ ] Add filter shape visualization.
+- [ ] Add output meters.
+
 # Developing Surge XS
 
 Surge XT uses CMake for all of its build-related tasks, and requires a set of free tools to build the synth. If you have
