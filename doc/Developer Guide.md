@@ -6,45 +6,6 @@ This document contains the guidelines that we use while developing Surge. Please
 follow them whenever possible. If you have further questions, look at README.md
 for an up to date list of Surge communication channels.
 
-## Contributing
-
-### Code reviews
-
-Code reviews are important parts of pull requests. Folks do them carefully and
-seriously. But we are always polite and professional. If you think a comment about
-your code is somehow rude or impolite, please don't; nobody in the Surge community has that
-intent.
-
-But please, do expect your code to be reviewed before it is merged, and you may be asked
-to make changes. Skewing to these rules and checking them before you do a PR can help
-make everyone's time more efficient.
-
-### Commit messages
-
-Format:
-
-```
-<short summary one-line summary>
-
-<long description describing the change in detail>
-
-<optional tag>
-```
-
-A tag can be either `Related <issue number>`, `Closes <issue number>` or `Addresses <issue number>`.
-
-
-### GitHub usage
-
-* The [How to Git](How%20to%20Git.md) document is a good basic primer if you are new to `git`.
-* Generally, try and have a GitHub issue which documents what you are trying to do
-* Name your branch with a descriptive name and an issue number. For instance,
-`mac-wav-file-198` is a branch to implement WAV file reading on Mac, in response to issue #198
-* Try to have pull requests with one or a small number of commits. If your change has two
-logical big steps, two commits is fine, but work commits where you just make a small change
-could be squashed with `git rebase`. If you don't know how to do this, ask us on Surge Discord server, or
-put in the PR with your commits and we can squash at merge
-* Try to avoid trivial or unrelated diffs. Your diffs should be "about" the same size as your change.
 
 ## Coding style
 
