@@ -181,12 +181,9 @@ function(surge_make_installers)
             COMMAND ${CMAKE_COMMAND} -E make_directory "${portsst}"
 
             COMMAND ${CMAKE_COMMAND} -E copy "${SURGE_PRODUCT_DIR}/Surge XT.clap" "${portsst}"
-            COMMAND ${CMAKE_COMMAND} -E copy "${SURGE_PRODUCT_DIR}/Surge XT Effects.clap" "${portsst}"
             COMMAND ${CMAKE_COMMAND} -E copy "${SURGE_PRODUCT_DIR}/Surge XT.exe" "${portsst}"
-            COMMAND ${CMAKE_COMMAND} -E copy "${SURGE_PRODUCT_DIR}/Surge XT Effects.exe" "${portsst}"
             COMMAND ${CMAKE_COMMAND} -E copy "${SURGE_PRODUCT_DIR}/surge-xt-cli.exe" "${portsst}"
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${SURGE_PRODUCT_DIR}/Surge XT.vst3" "${portsst}/Surge XT.vst3"
-            COMMAND ${CMAKE_COMMAND} -E copy_directory "${SURGE_PRODUCT_DIR}/Surge XT Effects.vst3" "${portsst}/Surge XT Effects.vst3"
 
             COMMAND 7z a -r ${SURGE_XT_DIST_OUTPUT_DIR}/surge-xt-win${SURGE_BITNESS}${SURGE_EXTRA_ZIP_NAME}${WINARCH}-${SXTVER}-pluginsonly.zip "${portsst}/*"
       )

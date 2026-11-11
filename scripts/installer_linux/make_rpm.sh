@@ -114,11 +114,8 @@ install -m 0644 $(pwd)/changelog.txt %{buildroot}%{_datarootdir}/surge-xt/doc/ch
 
 cp -r ${SOURCEDIR}/resources/data/* %{buildroot}%{_datarootdir}/surge-xt/
 cp -r "${INDIR}/Surge XT.vst3" %{buildroot}%{_libdir}/vst3/
-cp -r "${INDIR}/Surge XT Effects.vst3" %{buildroot}%{_libdir}/vst3/
 cp -r "${INDIR}/Surge XT.clap" %{buildroot}%{_libdir}/clap/
-cp -r "${INDIR}/Surge XT Effects.clap" %{buildroot}%{_libdir}/clap/
 cp -r "${INDIR}/Surge XT.lv2" %{buildroot}%{_libdir}/lv2/
-cp -r "${INDIR}/Surge XT Effects.lv2" %{buildroot}%{_libdir}/lv2/
 
 # I have no idea why the docker image makes these
 rm -rf "%{buildroot}%{_libdir}/.build-id"
@@ -127,7 +124,6 @@ rm -rf "%{buildroot}lib/.build-id"
 # install executable files as executable
 install -m 0755 "${INDIR}/Surge XT" %{buildroot}/%{_bindir}
 install -m 0755 "${INDIR}/surge-xt-cli" %{buildroot}/%{_bindir}
-install -m 0755 "${INDIR}/Surge XT Effects" %{buildroot}/%{_bindir}
 
 # set permissions on shared libraries
 find %{buildroot}%{_libdir}/vst3/ -type f -iname "*.so" -exec chmod 0644 {} +
@@ -136,13 +132,9 @@ find %{buildroot}%{_libdir}/vst3/ -type f -iname "*.so" -exec chmod 0644 {} +
 %files
 "%{_bindir}/Surge XT"
 "%{_bindir}/surge-xt-cli"
-"%{_bindir}/Surge XT Effects"
 "%{_libdir}/vst3/Surge XT.vst3"
-"%{_libdir}/vst3/Surge XT Effects.vst3"
 "%{_libdir}/clap/Surge XT.clap"
-"%{_libdir}/clap/Surge XT Effects.clap"
 "%{_libdir}/lv2/Surge XT.lv2"
-"%{_libdir}/lv2/Surge XT Effects.lv2"
 "%{_datarootdir}/surge-xt/*"
 
 

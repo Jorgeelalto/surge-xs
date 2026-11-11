@@ -80,11 +80,8 @@ Name: "minimal"; Description: "Minimal installation"
 
 [Components]
 Name: CLAP; Description: {#MyAppName} CLAP (32-bit); Types: full compact custom minimal; Flags: checkablealone
-Name: EffectsCLAP; Description: {#MyAppName} Effects CLAP (32-bit); Types: full custom; Flags: checkablealone
 Name: VST3; Description: {#MyAppName} VST3 (32-bit); Types: full compact custom; Flags: checkablealone
-Name: EffectsVST3; Description: {#MyAppName} Effects VST3 (32-bit); Types: full custom; Flags: checkablealone
 Name: SA; Description: {#MyAppName} Standalone (32-bit); Types: full custom; Flags: checkablealone
-Name: EffectsSA; Description: {#MyAppName} Effects Standalone (32-bit); Types: full custom; Flags: checkablealone
 Name: Data; Description: Data Files; Types: full compact custom; Flags: fixed disablenouninstallwarning
 Name: Patches; Description: Patches; Types: full compact custom; Flags: checkablealone disablenouninstallwarning
 Name: Wavetables; Description: Wavetables; Types: full custom; Flags: checkablealone disablenouninstallwarning
@@ -109,11 +106,8 @@ Source: {#SURGE_SRC}\resources\fonts\Lato-Bold.ttf; DestDir: "{autofonts}"; Comp
 Source: {#SURGE_SRC}\resources\fonts\Lato-BoldItalic.ttf; DestDir: "{autofonts}"; Components: Data; FontInstall: "Lato Bold Italic"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: {#SURGE_SRC}\resources\fonts\Lato-Italic.ttf; DestDir: "{autofonts}"; Components: Data; FontInstall: "Lato Italic"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: {#SURGE_BIN}\surge_xt_products\{#MyAppName} (32-bit).clap; DestDir: {commoncf32}\CLAP\{#MyAppPublisher}\; Components: CLAP; Flags: ignoreversion recursesubdirs
-Source: {#SURGE_BIN}\surge_xt_products\{#MyAppName} Effects (32-bit).clap; DestDir: {commoncf32}\CLAP\{#MyAppPublisher}\; Components: EffectsCLAP; Flags: ignoreversion skipifsourcedoesntexist recursesubdirs
 Source: {#SURGE_BIN}\surge_xt_products\{#MyAppName} (32-bit).vst3\*; DestDir: {commoncf32}\VST3\{#MyAppPublisher}\{#MyAppName} (32-bit).vst3\; Components: VST3; Flags: ignoreversion recursesubdirs
-Source: {#SURGE_BIN}\surge_xt_products\{#MyAppName} Effects (32-bit).vst3\*; DestDir: {commoncf32}\VST3\{#MyAppPublisher}\{#MyAppName} Effects (32-bit).vst3\; Components: EffectsVST3; Flags: ignoreversion skipifsourcedoesntexist recursesubdirs
 Source: {#SURGE_BIN}\surge_xt_products\{#MyAppName} (32-bit).exe; DestDir: {commonpf32}\{#MyAppPublisher}\{#MyAppName}\; Components: SA; Flags: ignoreversion
-Source: {#SURGE_BIN}\surge_xt_products\{#MyAppName} Effects (32-bit).exe; DestDir: {commonpf32}\{#MyAppPublisher}\{#MyAppName}\; Components: EffectsSA; Flags: ignoreversion
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -121,20 +115,19 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Icons]
 Name: "{group}\{#MyAppPublisher}\{#MyAppName}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{group}\{#MyAppPublisher}\{#MyAppName}\{#MyAppName}"; Filename: "{commonpf32}\{#MyAppPublisher}\{#MyAppName}\{#MyAppName} (32-bit).exe"; WorkingDir: "{commonpf32}\{#MyAppPublisher}\{#MyAppName}"; Flags: createonlyiffileexists
-Name: "{group}\{#MyAppPublisher}\{#MyAppName}\{#MyAppName} Effects"; Filename: "{commonpf32}\{#MyAppPublisher}\{#MyAppName}\{#MyAppName} Effects (32-bit).exe"; WorkingDir: "{commonpf32}\{#MyAppPublisher}\{#MyAppName}"; Flags: createonlyiffileexists
 
 [Run]
 Filename: "{cmd}"; \
     WorkingDir: "{commoncf32}\CLAP"; \
     Parameters: "/C mklink /D /J  ""{commoncf32}\CLAP\{#MyAppPublisher}\{#MyAppNameCondensed}Data"" ""{commonappdata}\{#MyAppName}"""; \
     Flags: runascurrentuser; \
-    Check: WizardIsComponentSelected('CLAP') or WizardIsComponentSelected('EffectsCLAP')
+    Check: WizardIsComponentSelected('CLAP')
 
 Filename: "{cmd}"; \
     WorkingDir: "{commoncf32}\VST3"; \
     Parameters: "/C mklink /D /J  ""{commoncf32}\VST3\{#MyAppPublisher}\{#MyAppNameCondensed}Data"" ""{commonappdata}\{#MyAppName}"""; \
     Flags: runascurrentuser; \
-    Check: WizardIsComponentSelected('VST3') or WizardIsComponentSelected('EffectsVST3')
+    Check: WizardIsComponentSelected('VST3')
 
 [Code]
 procedure AddToReadyMemo(var Memo: string; Info, NewLine: string);
@@ -165,23 +158,23 @@ begin
   Result := Result + 'Installation Locations:' + NewLine
   Result := Result + Space + 'Data Files: ' + AppData + '\' + AppName + NewLine
 
-  if IsSelected('clap') or IsSelected('effectsclap') then
+  if IsSelected('clap') then
     Result := Result + Space + 'CLAP: ' + CF + '\CLAP\' + AppPublisher + '\' + NewLine;
 
-  if IsSelected('vst3') or IsSelected('effectsvst3') then
+  if IsSelected('vst3') then
     Result := Result + Space + 'VST3: ' + CF + '\VST3\' + AppPublisher + '\' + NewLine;
 
-  if IsSelected('sa') or IsSelected('effectssa') then
+  if IsSelected('sa') then
     Result := Result + Space + 'Standalone: ' + PF + '\' + AppPublisher + '\' + AppName + '\' + NewLine;
 
-  if (IsSelected('clap') or IsSelected('effectsclap')) and (IsSelected('vst3') or IsSelected('effectsvst3')) then
+  if IsSelected('clap') and IsSelected('vst3') then
     Result := Result + Space + 'Portable Junctions:' + NewLine
   else
     Result := Result + Space + 'Portable Junction:' + NewLine;
 
-  if IsSelected('clap') or IsSelected('effectsclap') then
+  if IsSelected('clap') then
     Result := Result + Space + Space + 'CLAP: ' + CF + '\CLAP\' + AppPublisher + '\' + AppNameCondensed + 'Data' + NewLine;
 
-  if IsSelected('vst3') or IsSelected('effectsvst3') then
+  if IsSelected('vst3') then
     Result := Result + Space + Space + 'VST3: ' + CF + '\VST3\' + AppPublisher + '\' + AppNameCondensed + 'Data' + NewLine;
 end;

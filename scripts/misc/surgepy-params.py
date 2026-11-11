@@ -1,6 +1,3 @@
-import sys
-sys.path.append( "cmake-build-release/src/surge-python/" )
-
 import surgepy
 
 surge = surgepy.createSurge(48000)

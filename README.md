@@ -7,8 +7,7 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 
 ## Roadmap
 
-- [ ] Remove Surge FX.
-- [ ] Remove Surge Rack.
+- [x] Remove Surge FX, Python and Rust bindings.
 - [ ] Select effects, filters and oscillators to keep.
    - Wanted FXs:
    - Wanted filters:

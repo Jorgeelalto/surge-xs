@@ -80,10 +80,8 @@ cp -r ${SOURCEDIR}/scripts/installer_linux/assets/* ${PACKAGE_NAME}/usr/share
 
 # Copy the VST3 bundle
 cp -r "${INDIR}/Surge XT.vst3" ${PACKAGE_NAME}/usr/lib/vst3/
-cp -r "${INDIR}/Surge XT Effects.vst3" ${PACKAGE_NAME}/usr/lib/vst3/
 cp -r "${INDIR}/Surge XT" ${PACKAGE_NAME}/usr/bin/
 cp -r "${INDIR}/surge-xt-cli" ${PACKAGE_NAME}/usr/bin/
-cp -r "${INDIR}/Surge XT Effects" ${PACKAGE_NAME}/usr/bin/
 
 # set permissions on shared libraries
 find ${PACKAGE_NAME}/usr/lib/vst3/ -type f -iname "*.so" -exec chmod 0644 {} +
@@ -91,13 +89,11 @@ find ${PACKAGE_NAME}/usr/lib/vst3/ -type f -iname "*.so" -exec chmod 0644 {} +
 if [[ -f "${INDIR}/Surge XT.clap" ]]; then
   echo "Installing CLAP components"
   cp -r "${INDIR}/Surge XT.clap" ${PACKAGE_NAME}/usr/lib/clap/
-  cp -r "${INDIR}/Surge XT Effects.clap" ${PACKAGE_NAME}/usr/lib/clap/
   find ${PACKAGE_NAME}/usr/lib/clap/ -type f -iname "*.so" -exec chmod 0644 {} +
 fi
 
 if [[ -d "${INDIR}/Surge XT.lv2" ]]; then
   cp -r "${INDIR}/Surge XT.lv2" ${PACKAGE_NAME}/usr/lib/lv2/
-  cp -r "${INDIR}/Surge XT Effects.lv2" ${PACKAGE_NAME}/usr/lib/lv2/
   find ${PACKAGE_NAME}/usr/lib/lv2/ -type f -iname "*.so" -exec chmod 0644 {} +
 fi
 
@@ -118,4 +114,3 @@ popd
 
 rm -rf ${PACKAGE_NAME}
 popd
-

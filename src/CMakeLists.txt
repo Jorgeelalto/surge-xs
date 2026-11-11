@@ -1,9 +1,5 @@
 # vi:set sw=2 et:
 option(SURGE_BUILD_XT "Build Surge XT plugin" ON)
-option(SURGE_BUILD_FX "Build Surge XT Effects plugin" ON)
-option(SURGE_BUILD_PYTHON_BINDINGS "Build Surge XT Python bindings" OFF)
-option(SURGE_BUILD_RS "Build Surge XT Rust bindings" OFF)
-option(SURGE_BUILD_RS_EXAMPLES "Build examples for Rust bindings" OFF)
 option(SURGE_COPY_TO_PRODUCTS "Copy built plugins to the products directory" ON)
 option(SURGE_COPY_AFTER_BUILD "Copy JUCE plugins to system plugin area after build" OFF)
 option(SURGE_EXPOSE_PRESETS "Expose Surge XT presets via the JUCE program API" OFF)
@@ -134,7 +130,7 @@ if(SURGE_XT_BUILD_AUV3)
   list(APPEND SURGE_JUCE_FORMATS AUv3)
 endif()
 
-if(DEFINED ENV{VST2SDK_DIR} AND NOT SURGE_BUILD_PYTHON_BINDINGS)
+if(DEFINED ENV{VST2SDK_DIR})
   file(TO_CMAKE_PATH "$ENV{VST2SDK_DIR}" JUCE_VST2_DIR)
   juce_set_vst2_sdk_path(${JUCE_VST2_DIR})
   list(APPEND SURGE_JUCE_FORMATS VST)
@@ -171,24 +167,11 @@ if(SURGE_BUILD_TESTRUNNER AND NOT SURGE_SKIP_JUCE_FOR_RACK)
   add_subdirectory(surge-testrunner)
 endif()
 
-if(SURGE_BUILD_FX AND NOT SURGE_SKIP_JUCE_FOR_RACK)
-  add_subdirectory(surge-fx)
-endif()
-
 if(SURGE_BUILD_XT AND NOT SURGE_SKIP_JUCE_FOR_RACK)
   add_subdirectory(surge-xt)
 endif()
 
-if(SURGE_BUILD_PYTHON_BINDINGS)
-  add_subdirectory(surge-python)
-endif()
-
-# psa: this builds last (logic inside).
-if(SURGE_BUILD_RS)
-  add_subdirectory(surge-rs)
-endif()
-
-if(SURGE_BUILD_FX AND SURGE_BUILD_XT AND NOT CMAKE_CROSSCOMPILING)
+if(SURGE_BUILD_XT AND NOT SURGE_SKIP_JUCE_FOR_RACK AND NOT CMAKE_CROSSCOMPILING)
   surge_make_installers()
 endif()
 

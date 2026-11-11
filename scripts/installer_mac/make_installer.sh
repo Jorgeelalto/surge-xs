@@ -18,12 +18,6 @@ AU="Surge XT.component"
 CLAP="Surge XT.clap"
 APP="Surge XT.app"
 LV2="Surge XT.lv2"
-FXAU="Surge XT Effects.component"
-FXVST3="Surge XT Effects.vst3"
-FXCLAP="Surge XT Effects.clap"
-FXAPP="Surge XT Effects.app"
-FXLV2="Surge XT Effects.lv2"
-
 
 if [ "$VERSION" == "" ]; then
     echo "You must specify the version you are packaging!"
@@ -91,40 +85,20 @@ if [[ -d $INDIR/$VST3 ]]; then
     build_flavor "VST3" "$VST3" "org.surge-synth-team.surge-xt.vst3.pkg" "/Library/Audio/Plug-Ins/VST3"
 fi
 
-if [[ -d $INDIR/$FXVST3 ]]; then
-    build_flavor "FXVST3" "$FXVST3" "org.surge-synth-team.surge-xt-fx.vst3.pkg" "/Library/Audio/Plug-Ins/VST3"
-fi
-
 if [[ -d $INDIR/$AU ]]; then
     build_flavor "AU" "$AU" "org.surge-synth-team.surge-xt.component.pkg" "/Library/Audio/Plug-Ins/Components"
-fi
-
-if [[ -d $INDIR/$FXAU ]]; then
-    build_flavor "FXAU" "$FXAU" "org.surge-synth-team.surge-xt-fx.component.pkg" "/Library/Audio/Plug-Ins/Components"
 fi
 
 if [[ -d $INDIR/$CLAP ]]; then
     build_flavor "CLAP" "$CLAP" "org.surge-synth-team.surge-xt.clap.pkg" "/Library/Audio/Plug-Ins/CLAP"
 fi
 
-if [[ -d $INDIR/$FXCLAP ]]; then
-    build_flavor "FXCLAP" "$FXCLAP" "org.surge-synth-team.surge-xt-fx.clap.pkg" "/Library/Audio/Plug-Ins/CLAP"
-fi
-
 if [[ -d $INDIR/$LV2 ]]; then
     build_flavor "LV2" "$LV2" "org.surge-synth-team.surge-xt.lv2.pkg" "/Library/Audio/Plug-Ins/LV2"
 fi
 
-if [[ -d $INDIR/$FXLV2 ]]; then
-    build_flavor "FXLV2" "$FXLV2" "org.surge-synth-team.surge-xt-fx.lv2.pkg" "/Library/Audio/Plug-Ins/LV2"
-fi
-
 if [[ -d $INDIR/$APP ]]; then
     build_flavor "APP" "$APP" "org.surge-synth-team.surge-xt.app.pkg" "/tmp/SXT" "--entitlements ${SOURCEDIR}/scripts/installer_mac/Resources/entitlements.plist"
-fi
-
-if [[ -d $INDIR/$FXAPP ]]; then
-    build_flavor "FXAPP" "$FXAPP" "org.surge-synth-team.surge-xt-fx.app.pkg" "/tmp/SXT" "--entitlements ${SOURCEDIR}/scripts/installer_mac/Resources/entitlements.plist"
 fi
 
 # Build the resources pagkage
@@ -167,32 +141,6 @@ if [[ -d $INDIR/$APP ]]; then
 	APP_CHOICE_DEF="<choice id=\"org.surge-synth-team.surge-xt.app.pkg\" visible=\"true\" start_selected=\"true\" title=\"Surge XT App\"><pkg-ref id=\"org.surge-synth-team.surge-xt.app.pkg\"/></choice><pkg-ref id=\"org.surge-synth-team.surge-xt.app.pkg\" version=\"${VERSION}\" onConclusion=\"none\">Surge_XT_APP.pkg</pkg-ref>"
 fi
 
-if [[ -d $INDIR/$FXVST3 ]]; then
-	FXVST3_PKG_REF='<pkg-ref id="org.surge-synth-team.surge-xt-fx.vst3.pkg"/>'
-	FXVST3_CHOICE='<line choice="org.surge-synth-team.surge-xt-fx.vst3.pkg"/>'
-	FXVST3_CHOICE_DEF="<choice id=\"org.surge-synth-team.surge-xt-fx.vst3.pkg\" visible=\"true\" start_selected=\"true\" title=\"Surge XT Effects VST3\"><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.vst3.pkg\"/></choice><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.vst3.pkg\" version=\"${VERSION}\" onConclusion=\"none\">Surge_XT_FXVST3.pkg</pkg-ref>"
-fi
-if [[ -d $INDIR/$FXAU ]]; then
-	FXAU_PKG_REF='<pkg-ref id="org.surge-synth-team.surge-xt-fx.component.pkg"/>'
-	FXAU_CHOICE='<line choice="org.surge-synth-team.surge-xt-fx.component.pkg"/>'
-	FXAU_CHOICE_DEF="<choice id=\"org.surge-synth-team.surge-xt-fx.component.pkg\" visible=\"true\" start_selected=\"true\" title=\"Surge XT Effects Audio Unit\"><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.component.pkg\"/></choice><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.component.pkg\" version=\"${VERSION}\" onConclusion=\"none\">Surge_XT_FXAU.pkg</pkg-ref>"
-fi
-if [[ -d $INDIR/$FXCLAP ]]; then
-	FXCLAP_PKG_REF='<pkg-ref id="org.surge-synth-team.surge-xt-fx.clap.pkg"/>'
-	FXCLAP_CHOICE='<line choice="org.surge-synth-team.surge-xt-fx.clap.pkg"/>'
-	FXCLAP_CHOICE_DEF="<choice id=\"org.surge-synth-team.surge-xt-fx.clap.pkg\" visible=\"true\" start_selected=\"true\" title=\"Surge XT Effects CLAP\"><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.clap.pkg\"/></choice><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.clap.pkg\" version=\"${VERSION}\" onConclusion=\"none\">Surge_XT_FXCLAP.pkg</pkg-ref>"
-fi
-if [[ -d $INDIR/$FXLV2 ]]; then
-	FXLV2_PKG_REF='<pkg-ref id="org.surge-synth-team.surge-xt-fx.lv2.pkg"/>'
-	FXLV2_CHOICE='<line choice="org.surge-synth-team.surge-xt-fx.lv2.pkg"/>'
-	FXLV2_CHOICE_DEF="<choice id=\"org.surge-synth-team.surge-xt-fx.lv2.pkg\" visible=\"true\" start_selected=\"false\" title=\"Surge XT Effects LV2\"><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.lv2.pkg\"/></choice><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.lv2.pkg\" version=\"${VERSION}\" onConclusion=\"none\">Surge_XT_FXLV2.pkg</pkg-ref>"
-fi
-if [[ -d $INDIR/$FXAPP ]]; then
-	FXAPP_PKG_REF='<pkg-ref id="org.surge-synth-team.surge-xt-fx.app.pkg"/>'
-	FXAPP_CHOICE='<line choice="org.surge-synth-team.surge-xt-fx.app.pkg"/>'
-	FXAPP_CHOICE_DEF="<choice id=\"org.surge-synth-team.surge-xt-fx.app.pkg\" visible=\"true\" start_selected=\"true\" title=\"Surge XT Effects App\"><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.app.pkg\"/></choice><pkg-ref id=\"org.surge-synth-team.surge-xt-fx.app.pkg\" version=\"${VERSION}\" onConclusion=\"none\">Surge_XT_FXAPP.pkg</pkg-ref>"
-fi
-
 cat > $TMPDIR/distribution.xml << XMLEND
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1">
@@ -206,11 +154,6 @@ cat > $TMPDIR/distribution.xml << XMLEND
     ${LV2_PKG_REF}
     ${VST3_PKG_REF}
 
-    ${FXAPP_PKG_REF}
-    ${FXAU_PKG_REF}
-    ${FXCLAP_PKG_REF}
-    ${FXLV2_PKG_REF}
-    ${FXVST3_PKG_REF}
     <pkg-ref id="org.surge-synth-team.surge-xt.resources.pkg"/>
     <options require-scripts="false" customize="always" hostArchitectures="x86_64,arm64" rootVolumeOnly="true"/>
     <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
@@ -221,11 +164,6 @@ cat > $TMPDIR/distribution.xml << XMLEND
         ${LV2_CHOICE}
         ${VST3_CHOICE}
 
-        ${FXAPP_CHOICE}
-        ${FXAU_CHOICE}
-        ${FXCLAP_CHOICE}
-        ${FXLV2_CHOICE}
-        ${FXVST3_CHOICE}
         <line choice="org.surge-synth-team.surge-xt.resources.pkg"/>
     </choices-outline>
     ${VST3_CHOICE_DEF}
@@ -233,11 +171,6 @@ cat > $TMPDIR/distribution.xml << XMLEND
     ${CLAP_CHOICE_DEF}
     ${LV2_CHOICE_DEF}
     ${APP_CHOICE_DEF}
-    ${FXVST3_CHOICE_DEF}
-    ${FXAU_CHOICE_DEF}
-    ${FXCLAP_CHOICE_DEF}
-    ${FXLV2_CHOICE_DEF}
-    ${FXAPP_CHOICE_DEF}
     <choice id="org.surge-synth-team.surge-xt.resources.pkg" visible="true" enabled="false" selected="true" title="Install resources">
         <pkg-ref id="org.surge-synth-team.surge-xt.resources.pkg"/>
     </choice>

@@ -4,6 +4,10 @@
 
 For every code change, read and follow the [Developer Guide](doc/Developer_Guide.md) for coding style, naming, comments, formatting, and general implementation conventions. Also consult [Surge Architecture](doc/Surge_Architecture.md) for the code layout and the relationships between storage, parameters, the synthesizer, GUI, voices, DSP, and the headless host. The architecture document is an evolving overview, not a complete implementation guide.
 
+## Build validation
+
+On macOS, validate builds using only the VST3 and standalone targets by default: `cmake --build <build-dir> --target surge-xt_VST3 surge-xt_Standalone`. Avoid building all targets unless the task specifically requires broader coverage.
+
 ## Documentation index
 
 The Markdown documents in [`doc/`](doc/) are repository references. Read the relevant documents before changing the features or workflows they describe; these pages contain the detailed procedures and design notes.

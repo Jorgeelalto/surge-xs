@@ -82,28 +82,14 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
-if(SURGE_BUILD_RS_EXAMPLES AND NOT SURGE_BUILD_RS)
-  message(STATUS "Enabling Rust bindings, which is needed for its examples.")
-  set(SURGE_BUILD_RS ON)
-endif()
-
 # Enable LTO if unspecified, for release builds.
-# ...but not for rust!
 if(ENABLE_LTO)
-  if(SURGE_BUILD_RS)
-    message(STATUS "Rust bindings enabled! Disabling link-time optimization.")
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
-  elseif(CMAKE_BUILD_TYPE MATCHES "Release")
+  if(CMAKE_BUILD_TYPE MATCHES "Release")
     message(STATUS "Enabling link-time optimization for release builds.")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
   endif()
 else()
   message(STATUS "Link-time optimization is disabled.")
-endif()
-
-if(SURGE_BUILD_RS)
-  message(STATUS "Lua is disabled due to temporary incompatibility with Rust bindings.")
-    set(SURGE_SKIP_LUA TRUE)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND UNIX AND NOT APPLE AND NOT SURGE_SKIP_PIE_CHANGE)
@@ -258,7 +244,6 @@ source_group("Surge GUI" REGULAR_EXPRESSION "src/surge-xt/gui/")
 source_group("Generated Code" REGULAR_EXPRESSION "version.cpp")
 source_group("Headless" REGULAR_EXPRESSION "src/surge-testrunner/")
 source_group("Surge XT JUCE" REGULAR_EXPRESSION "src/surge-xt/")
-source_group("Surge FX JUCE" REGULAR_EXPRESSION "src/surge-fx/")
 
 # }}}
 option(SURGE_BUILD_TESTRUNNER "Build Surge unit test runner" ON)
