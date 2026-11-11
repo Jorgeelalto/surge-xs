@@ -1,65 +1,56 @@
-# Surge Patch Tag Data Model
+# Surge patch tag data model
 
-This document describes two things. The physical (code) model for how we store tags and the
-end use (value/data) model for how that physical model is used to tag patches. It does not
-describe any particular implementation or tool. It is currently a RFC.
+This RFC describes the physical model used to store patch tags and the logical model
+used to apply them. It does not specify an implementation or tool.
 
-## Physical Patch Data Model
+## Physical model
 
-A patch has the following characteristics inside Surge:
+A patch contains:
 
-- Gleaned from the filesystem
-  - path: filesystem path to the location of the patch file (currently .fxp)
-  - name: the basename without extension. `/foo/bar/This.fxp` would have `This`
-- Stored in the XML with fixed format (legacy)
-  - author (up to 256 chars of an author identifier)
-  - comment (up to 4096 chars of plain text comment)
-- A List of categorized tags
-  - each patch has a list of (category, value) pair tags
-  - a typed tag has a category of up to 256 chars and a value of up to 1024 chars
-  - this list can be arbitrarily long.
-  - The implementation places no constraints
-    on tag categories or values other than that they are UTF-16 strings
+- **Filesystem metadata:** its path (currently a `.fxp` file) and its basename without
+  the extension. For example, `/foo/bar/This.fxp` has the name `This`.
+- **Legacy XML fields:** an author identifier of up to 256 characters and a plain-text
+  comment of up to 4096 characters.
+- **Categorized tags:** a list of `(category, value)` pairs. Each category can contain
+  up to 256 characters; each value, up to 1024. The list has no fixed length, and the
+  implementation otherwise places no constraints on UTF-16 categories or values.
 
-## Using the Tags to generate a Logical (Content) Model
+## Logical model
 
-With the above flexible approach we can apply any set of key-value pairs we want
-to any patch - great! That implementation choice would lead to a mess if we didn't
-also define some core tag categories.
+To keep flexible key-value tags consistent, define core categories. Each category
+specifies whether it may appear once or multiple times and whether its values are
+prescribed or free-form.
 
-A tag category has a few features:
-- Is the tag allowed multiple times in a patch or just once
-- Does the tag have constrained values or free values
+The following categories are proposed:
 
-Here is a proposed set of tag categories.
+### Patch description
 
-### Tags describing the patch
+Genres are not mutually exclusive or collectively exhaustive (MECE). This proposal is
+open to feedback:
 
-Obviously, descriptive genres are not MECE. Here's a proposal.
+- `factory_status`: one value per patch: `factory`, `third_party`, or `user`.
+- `category`: one prescribed value per patch. The list is undecided; proposed values
+  include `Keys`, `Pads`, and `FX`.
+- `sub-category`: zero or more free-form values. For example, a patch in `Keys` might
+  have `EP` and `FM` sub-categories.
+- `features`: multiple prescribed values. The list is undecided; proposed values include
+  `Layered`, `Split`, `Sequenced`, and `MPE`.
+- `character`: multiple prescribed values. The list is undecided; proposed values
+  include `Cinematic` and `Analog`.
 
-- `factory_status`: One per patch. Has the value `factory` `third_party` or `user`
-- `category`: One per patch. Prescribed values. The list of values is (still being determined) `Keys`, `Pads`, `FX`
-   (this needs feedback obviously - what's the list?)
-- `sub-category`: Zero or more per patch. Free values. You can tag categories with sub-categories as you
-   see fit. For instance, you may want `EP` and `FM` as sub-categories of a patch in `Keys`
-- `features`: Many per patch. Prescribed values. The list of values is (still being determined)
-   `Layered`, `Split`, `Sequenced`, `MPE`
-- `character`: Many per patch. Prescribed values. The list of values is (still being determined)
-   `Cinematic`, `Analog`
+### Extended authorship
 
-### Tags for extended authorship
+- `author_collection`: the name an author gives a patch bank or collection.
+- `author_url`: a link to the author's website.
+- `author_license`: a license, preferably from <https://spdx.org/licenses/>.
 
-- `author_collection`: An author can ascribe a collection name to their bank of patches
-- `author_url`: A link to author's website
-- `author_license`: A license, ideally from https://spdx.org/licenses/
+### User tags
 
-### User Tags
+`user_tag` may appear any number of times and contain arbitrary values.
 
-- `user_tag` Allowed as many times as you want with arbitrary content
+## Examples
 
-# Example
-
-Let's take the factory patch "Keyboards/DX EP.fxp". One would imagine tagging it like this:
+The factory patch `Keyboards/DX EP.fxp` might have:
 
 - name: DX EP
 - author: Claes
@@ -71,9 +62,9 @@ Let's take the factory patch "Keyboards/DX EP.fxp". One would imagine tagging it
 - character: Digital
 - character: Emulation
 - author_license: GPL-3.0-or-later
-- author_url: https://surge-synthesizer.github.io/
+- author_url: <https://surge-synthesizer.github.io/>
 
-Or imagine a sequenced MPE patch I made for a project I'm working on called "ChamberSynth":
+A sequenced MPE patch from a project called `ChamberSynth` might have:
 
 - name: That Pad From CS4
 - author: baconpaul

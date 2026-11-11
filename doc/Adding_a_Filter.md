@@ -1,39 +1,39 @@
-# How to add a filter?
+# Adding a filter
 
-1. Create `src/common/dsp/filters/MyFilter.h` and `MyFilter.cpp`. Look at `VintageLadders.cpp` as an example.
-   It should have two functions, `makeCoefficients()` and `process()`. The prototype for `process()` is fixed;
-   the prototype for `makeCoefficients()` is up to you. You are making free functions here, not objects.
-   Vintage Ladders signatures are good starting points.
-   Add the cpp to `src/common/CMakeLists.txt` in the same place where `VintageLadders.cpp`is.
+1. Create `src/common/dsp/filters/MyFilter.h` and `MyFilter.cpp`. Use `VintageLadders.cpp`
+   as a reference. Implement the free functions `makeCoefficients()` and `process()`.
+   `process()` has a fixed signature; `makeCoefficients()` can use your chosen signature.
+   The Vintage Ladders functions are good starting points. Add the `.cpp` to
+   `src/common/CMakeLists.txt` beside `VintageLadders.cpp`.
 
-2. In `FilterConfiguration.h`:
-* add an enum to `fu_type`. Most importantly, add it at the very **end**!
-* add a name to `fut_names` and `fut_menu_names`
-* add an entry to `fut_subcount` for the number of subtypes your filter has (if any)
-* add any additional strings or other constants your subtypes might use to this file too
-* add a line to `FilterSelectorMapper`
-* add an entry to `fut_glyph_index`
+2. Register the filter in `FilterConfiguration.h`:
+   - Add its enum value to `fu_type` **at the end**.
+   - Add its names to `fut_names` and `fut_menu_names`.
+   - Add its subtype count to `fut_subcount`, if it has subtypes.
+   - Add any subtype strings or constants.
+   - Add it to `FilterSelectorMapper` and `fut_glyph_index`.
 
-3. In `FilterCoefficientMaker.h` you get an opportunity to set up state variables.
-   You have 8 coefficients (`C[8]`) you can set to - well - anything.
-   This should redirect to `makeCoefficients()` function you put in your namespace.
+3. In `FilterCoefficientMaker.h`, configure the filter's state and call your namespaced
+   `makeCoefficients()` from the `FilterCoefficientMaker::MakeCoeffs()` switch. You can
+   use the eight values in `C[8]`. Coefficients are updated at most once per
+   `BLOCK_SIZE_OS`, and only when `F` or `R` changes.
 
-   1. In `FilterCoefficientMaker::MakeCoeffs()` call it in the switch
-   2. This is called at most once every `BLOCK_SIZE_OS` and then only when `F` or `R` change
+4. In `QuadFilterUnit.cpp`, add your `process()` function to `GetQFPtrFilterUnit()`.
+   It must have this signature:
 
-4. In `QuadFilterUnit.cpp`, you need to return a function which does the filtering from the setup in `GetQFPtrFilterUnit()`.
-   1. It has to have the prototype `_m128 op(QuadFilterUnitState * __restrict, _m128 in)`
-   2. The function to return is your namespaced `process()` function. It will get a `QuadFilterUnitState` which
-      has the coefficients you set in `makeCoeff()` (which is the `C[8]` array mentioned earlier)
-      and also an array of registers `R` you can use.
-   3. The most important thing about this code is that it is called in parallel per voice.
-      That is, you may get it called with between 1 and 4 of the SSE channels populated.
-      The `f->active` array tells you which voices are active. Each of the values (`in`, `C`, `R`) are also SSE-wide arrays.
-      You can see the SSE implementations in `QuadFilterUnit.cpp` and we should aspire to those.
-      But, you can also see a manual unroll in `NonlinearFeedback.cpp`
+   ```cpp
+   _m128 op(QuadFilterUnitState * __restrict, _m128 in)
+   ```
 
-5. If you are adding subtypes, you also want to add the stringification to `Parameter.cpp`. Vintage Ladders show this too.
+   The function receives a `QuadFilterUnitState` containing the coefficients in `C[8]`
+   and registers in `R`. Processing runs in parallel per voice, with 1–4 SSE channels
+   populated. Use `f->active` to identify active voices. The `in`, `C`, and `R` values
+   are also SSE-wide arrays. See the existing SSE implementations and the manual unroll
+   in `NonlinearFeedback.cpp`.
 
-6. If your subtype needs to be accessible to your SSE function, check out the switch statements in `SurgeVoice::SetQFB()`.
+5. If the filter has subtypes, add their display strings in `Parameter.cpp`. See Vintage
+   Ladders for an example.
 
-Then you can code up your filter. Again, feel free to follow Vintage Ladders as a worked example.
+6. If the SSE function needs the subtype, check the switches in `SurgeVoice::SetQFB()`.
+
+You can use Vintage Ladders as a worked example.

@@ -1,99 +1,71 @@
-# Dynamic Names, Deactivation and Bipolarity
+# Dynamic names, deactivation, and bipolarity
 
-In Surge 1.9, we have finally (finally!) implemented dynamic names, bipolarity, and activation
-status for sliders. This allows you to do things like rename on value changes etc. at
-draw time without having to trigger an entire UI rebuild. The mechanism is made slightly
-complicated by the fact that Parameter can't have any complex object members (so you can't have
-a `std::function` as a member on Parameter). So here's how it works!
+Surge 1.9 added dynamic parameter names, bipolarity, and activation status. These let the
+UI update labels and states at draw time, without rebuilding the UI. Because `Parameter`
+cannot own complex members such as `std::function`, handlers are stored in objects
+managed separately from parameters.
 
-## General Stuff
+## General
 
-1. You end up writing little static function objects with functions to determine
-   names and bools and stuff
-2. Those functions will be called a lot at render time. Make them snappy.
-3. Those functions belong to objects managed outside the lifecycle of Parameter.
-   Probably a pointer to a static is your best bet.
+1. Implement small static function objects for names, booleans, and related values.
+2. Keep them fast: they may be called often during rendering.
+3. Store them outside the `Parameter` lifecycle, usually as pointers to static objects.
 
-## Dynamic Names
+## Dynamic names
 
-The name of a parameter is what the slider shows. If your parameter requires a dynamic
-name, you need to do the following:
+The parameter name is the label shown by its slider. To make it dynamic:
 
-1. In `Parameter.cpp`, add the control type to `Parameter::supportsDynamicName`
-2. When you set up your parameter, but *after* you set the control type, set the
-   `dynamicName` object to a pointer to a class of type `ParameterDynamicName`. The
-   Parameter does *not* take ownership of the pointer, so the common pattern is
-   to make a little static stateless class with the stateless name operator and
-   assign a pointer to that to the object.
-3. Usually, a menu changes the nature of the names requiring a redraw (not a rebuild).
-   To make a parameter force a redraw on value change, add it to the list in
-   `Parameter::is_nonlocal_on_change`.
+1. Add the control type to `Parameter::supportsDynamicName` in `Parameter.cpp`.
+2. After setting up the parameter's control type, assign its `dynamicName` pointer to a
+   `ParameterDynamicName` implementation. The parameter does not own this object, so a
+   small stateless static handler is a common choice.
+3. If a menu change needs a redraw, add the control type to
+   `Parameter::is_nonlocal_on_change`. This redraws without rebuilding the UI.
 
-A few worked examples are in the codebase. `EuroTwist.cpp` sets up a class
-which has dynamic names based on the engine type. It shows how you find the
-associated oscillator using control groups, use that to look up oscillator mode,
-understand your parameter index, and return the right name.
+`EuroTwist.cpp` shows how to derive names from the engine type, find the related
+oscillator through control groups, and use the parameter index and oscillator mode.
+`SurgePatch.cpp` sets up the `lfoPhaseName` handler for LFO `start_phase` parameters,
+changing the label between Phase and Shuffle according to the LFO type.
 
-Similarly, the `lfoPhaseName` handler which is set up for all LFOs in `SurgePatch.cpp`
-creates a static handler and assigns it to all the `start_phase` dynamic
-names to swap Phase and Shuffle text labels based on LFO type.
+## Dynamic activation
 
-## Dynamic Activation
+Surge 1.7 added deactivated sliders; Surge 1.9 added clusters. There are two patterns:
 
-With Surge 1.7 we've introduced deactivated sliders, and with Surge 1.9 we can cluster them.
-Clusters come in two forms:
+- **Follow deactivation:** When parameter A is deactivated, parameter B is too. The
+  cluster has a menu to activate the item. See LPG Response and LPG Decay in
+  `EuroTwist.cpp`.
+- **Follow value:** Another value determines whether the parameter is deactivated. The
+  driving value controls it, so no activation menu is needed.
 
-1. "Follow deactivation" clusters. If parameter A is deactivated, so is parameter B.
-   A good example is the LPG Response/LPG Decay treatment in `EuroTwist.cpp`.
-   In this case you want a menu to activate the item.
-2. "Follow value" clusters. Based on some other value, deactivate this slider. In this case
-   you don't want a menu, since the menu is the value driver.
+### Follow deactivation pattern
 
-### Follow Deactivation Pattern
+The primary parameter owns the deactivation status queried by DSP through `p.deactivated`.
+Its control type participates in `can_deactivate`.
 
-In this pattern we have a 'primary' parameter. This is the parameter which holds the
-deactivation status, which the DSP engine asks `p.deactivated`, etc.... The control type
-participates in `can_deactivate` and this is unchanged.
+Implement `ParameterDynamicDeactivationFunction` with:
 
-To cluster other params with this one, you implement and set on the
-`ParameterDynamicDeactivationFunction` which contains two methods,
-`getValue()` which returns true/false for deactivated, and
-`getPrimaryActivationDriver` which returns a pointer to the deactivation parent,
-or null if there is no parent.
+- `getValue()`, which returns the parent's deactivation state.
+- `getPrimaryActivationDriver()`, which returns the parent parameter or null if there
+  is no parent.
 
-So basically, a good implementation of `getValue()` is to look up the parent param and
-return its decctivation status, and for `getPrimaryActivationDriver()` to look up the
-parent parameter and return a pointer to it. LPG parameters in EuroTwist do precisely this.
+The LPG parameters in `EuroTwist.cpp` demonstrate this pattern.
 
-### Follow Value Pattern
+### Follow value pattern
 
-In this pattern you only need to implement `getValue()` based on your function.
-The LFO does this with Rate and Phase for Envelope LFO type, as shown again in
-`SurgePatch.cpp`. In this case, do not advertise a leader param, since there isn't one
-(or at least, if there is one, you don't toggle it by setting `deactivated`).
+Implement only `getValue()` using the relevant value. The LFO Rate and Phase parameters
+use this pattern for Envelope LFOs in `SurgePatch.cpp`. Do not advertise a leader
+parameter: there is no leader, or it is not toggled by setting `deactivated`.
 
-## Dynamic Bipolarity
+## Dynamic bipolarity
 
-Dynamic bipolarity is much more complicated than name or activation, since it
-changes not just the UI element, but also the text formatting of the value.
-As such, dynamic bipolarity in 1.9 only works with percent-based units, and they
-have a specific type. We may expand on this in the future.
+Dynamic bipolarity changes both the UI control and value formatting. In Surge 1.9, it
+supports only percent-based units with a specific control type. It changes display only:
+the internal `val.f` remains in the `+/-1` range, which DSP must account for when
+clamping or modeling.
 
-The core decision we made with dynamic bipolarity is that we don't change the
-underlying value, but rather make a display-only change. So a dynamic bipolar
-value has the internal `val.f` always bound in +/- 1 range.
-Your DSP needs to assume that and clamp, model, etc... accordingly.
+Use `ct_percent_bipolar_w_dynamic_unipolar_formatting` and set `dynamicBipolar` to a
+non-owned object implementing `ParameterDynamicBool::getValue()`. When false, the value
+is formatted as unipolar (0% to 100% instead of -100% to 100%) and the slider background
+changes, while the stored value remains -1 to 1.
 
-As of this writing, dynamic bipolarity is also only available for
-`ct_percent_bipolar_w_dynamic_unipolar_formatting` control type.
-
-To use dynamic bipolarity, make your parameter of the above type and then
-set the `dynamicBipolar` member to a reference to a non-owned object.
-That implements a `ParameterDynamicBool` and its `getValue()` member which,
-if it returns false, will *format* the parameter as unipolar (so bind
-strings and modulations in 0%...100% range, instead of -100%...100% range) and swap the slider
-background, even though the underlying values will still be -1...1.
-
-A worked example of this is in `EuroTwist.cpp` and is implemented with
-the special flag `kScaleBasedOnIsBiPolar` on `displayinfo`.
-
+`EuroTwist.cpp` demonstrates this with the `kScaleBasedOnIsBiPolar` flag on `displayinfo`.

@@ -1,48 +1,42 @@
-# Effects Lifecycle
+# Effects lifecycle
 
-This documents how effects are created, swapped, initialized, etc... as of commit `8e03ba0b54b09` or so. 
+This note describes effect creation, replacement, and initialization as of commit
+`8e03ba0b54b09` or thereabouts.
 
-Airwindows effects are no longer included. Their effect type ID remains reserved for
-compatibility; loading a patch or FX chain that uses them turns those slots off and
-reports a warning. The bundled Airwindows impulse responses are also no longer included.
+Airwindows effects are no longer included. Their type IDs remain reserved for
+compatibility. Loading a patch or FX chain that uses one turns that slot off and reports
+a warning. Bundled Airwindows impulse responses are also no longer included.
 
-There's lots of cases. Let's enumerate all of them:
+## Core structures and functions
 
-## Core data structures and Functions
-
-* `spawn_effect` creates an instance of an `Effect` with the appropriate type bound to a storage and data
-* `loadFx` compares the synth state with the runtime state and optionally reloads effects
-    * the first argument `initp` if true means the new effect calls `init_default_values` and if false
-      just forces all params within their default ranges
-    * the second `force_reload_all` makes all effects reload
-    * `loadFx` begins in all cases where a type switches setting all params to type 'none'.
-    * `loadFx` is called from three places
-        * `synth::processAudioThreadOpsWhenAudioEngineUnavailable` if `load_fx_needed` is true with false/false
-        * `synth::processControl` if `load_fx_needed` with false/false
-        * `synth::loadRaw` in all cases with false/true (namely, force a full reload on patch load)
-    * If a reload of either form has changed, the `updateAfterReload()` virtual method is called on the effect
-* `load_fx_needed` is a bool on `SurgeSynth`
-    * triggers a call to `loadFx` in `processControlEV`
-    * set to true in the constructor of synth
-    * set to true on a `setParameter01` of `ct_fxtype` (so automation path)
-    * set to false in `loadFx`
-    * set to true in `SurgeGUIEeditor` when you have a `tag_fx_menu`
-* The patch has the `fx[n_fx]` array which holds the `FXStorage` pointers
-* The synth has an `FXStorage *fxsync` which is malloced to `n_fx_slots * sizeof(FXStorage)`. This
-  object acts as an edit buffer for external editors which want to bulk update the type of objects.
-  * In the synth constructor it is set to the value of `patch.fx[i]` for each `i`
-  * In `SurgeGUIEditor` the `fxsync` is used as the storage which is edited by the `XMLConfiguredMenus`, not
-    the patch buffer
-  * In `loadFx`
-     * if reloading an effect, copy from the sync to the patch. This de facto means "take the sync values as
-        they have been set by the GUI"
-     * Similarly if `fx_reload[s]` is true, copy from the sync, thensuspend and initialize the effect
-* The slot `fx_reload[n_fx_slots]`
-  * This is set by `SurgeGUIEditor` primarily to force a reload of an effect in the event that the type has not changed
+- `spawn_effect` creates an `Effect` of the requested type, bound to storage and data.
+- `loadFx` compares the synth and runtime states and optionally reloads effects:
+  - `initp=true` calls `init_default_values`; otherwise, parameters are forced into
+    their default ranges.
+  - `force_reload_all=true` reloads every effect.
+  - On a type change, `loadFx` first sets all parameters to type `none`.
+  - It is called by `synth::processAudioThreadOpsWhenAudioEngineUnavailable` and
+    `synth::processControl` with `false, false`, and by `synth::loadRaw` with
+    `false, true` to force a full reload after patch loading.
+  - If either kind of reload changes an effect, its virtual `updateAfterReload()` runs.
+- `SurgeSynth::load_fx_needed` triggers `loadFx` in `processControlEV`. It is set in the
+  synth constructor, set on `ct_fxtype` changes in `setParameter01` (the automation
+  path), and set by `SurgeGUIEditor` for `tag_fx_menu`; `loadFx` clears it.
+- The patch's `fx[n_fx]` array holds `FXStorage` pointers.
+- The synth's `fxsync` is allocated as `n_fx_slots * sizeof(FXStorage)` and serves as an
+  edit buffer for external editors that update effect types in bulk:
+  - The synth constructor points each slot to `patch.fx[i]`.
+  - `SurgeGUIEditor` edits `fxsync` through `XMLConfiguredMenus`, not the patch buffer.
+  - When reloading an effect, `loadFx` copies sync values to the patch, treating them as
+    the values set by the GUI. If `fx_reload[s]` is true, it also copies from sync,
+    suspends, and initializes the effect.
+- `SurgeGUIEditor` uses `fx_reload[n_fx_slots]` to force a reload when the effect type
+  has not changed.
 
 ## Empty effect to loaded effect, effect enabled
 
-Spawn Effect is called twice
+`spawn_effect` is called twice: once from the snapshot menu, and once from
+`SurgeSynthesizer::loadFx`. The first call's stack trace:
 
 ```
 Spawn Effect  id=6
@@ -63,54 +57,35 @@ Spawn Effect  id=6
   [  6]: 6   Surge                               0x0000000150640620 _ZN6AUBase9RenderBusERjRK14AudioTimeStampjj + 96
 ```
 
-* `XMLConfiguredMenus::loadSnapshot`
-    * Load an effect and call `init_ctrltypes` and `init_default_values`. This sets up the params on the control to defaults
-      in the storage bound to the effect
-    * delete the effect
-    * Parse the XML and set the `fxbuffer` parameter values as described in the effect. This leaves the storage configured with
-       values and types but does not leave the synth with the effect setup
-    * raise a `valueChanged` so `SurgeGUIEditor` sets `load_fx_needed` to true. 
-    * If `audio_processing_active` is false it also sets up the effect from the UI thread via the
-      call to `synth->processAudioThreadOpsWhenAudioEngineUnavailable()`, but we will ignore that case in this document
-      from hereon out
-* `SurgeSynthesizer`
-    * In the next `process()` and call to `processControl`, `load_fx_needed` will be true
-    * so call `loadFx(false, false)` which will force effect where the type in the effect is to be noticed as
-      changed and will spawn an effect
-    * but since `initp` is false, don't call `init_default_values` and instead continue to use the values
-      left lingering in the effect from the invocation in `XMLConfiguredMenus`.
-    
-## Loaded effect to disabled, effect enabled
+`XMLConfiguredMenus::loadSnapshot` creates an effect, calls `init_ctrltypes()` and
+`init_default_values()`, then deletes the effect. It parses the XML into the `fxbuffer`,
+leaving configured values and types but no effect instance. It then raises `valueChanged`,
+causing `SurgeGUIEditor` to set `load_fx_needed`. On the next `process()` call,
+`SurgeSynthesizer::processControl` calls `loadFx(false, false)` and spawns the effect.
+Because `initp` is false, it retains the values left by `XMLConfiguredMenus`.
 
-* `XMLConfiguredMenus` calls `loadSnapshot` with type 0 and null XML (fine).
-* This sets `valtype` to 0 and then `SurgeGUIEditor` gets the message
-* Question: What sets the types to none everywhere?
+If audio processing is inactive, the UI also initializes the effect through
+`synth->processAudioThreadOpsWhenAudioEngineUnavailable()`; this note does not cover that
+case further.
 
-## Empty effect to loaded effect, effect bypassed
+## Other transitions
 
-## Active effect to new preset of same type, effect on
+- **Loaded effect to disabled, effect enabled:** `XMLConfiguredMenus` calls
+  `loadSnapshot` with type 0 and null XML, sets `valtype` to 0, and notifies
+  `SurgeGUIEditor`. What sets all types to `none`?
+- **Empty effect to loaded effect, effect bypassed**
+- **Active effect to new preset of same type, effect on:** `XMLConfiguredMenus`
+- **Active effect to new effect of different type, effect on**
+- **Active effect to new effect, effect bypassed:** Is bypass from CEG different from
+  global bypass?
+- **Load a patch with effect off**
+- **Load a patch with active effect**
+- **Load a user effect setting:** `FXMenu::loadUserPreset` resembles `loadSnapshot`: it
+  creates an effect on the sync buffer, applies preset values, and raises an event. The
+  rest follows the same-type load path.
+- **Swap an effect**
 
-* `XMLConfiguredMenus`
+## DAW automation
 
-## Active effect to new effect of different type, effect on
-
-## Active effect to new effect, effect bypassed
-
-Question: is bypass from CEG different than global bypass?
-
-## Load a patch with effect off
-
-## Load a patch with active effect
-
-## Load a User effect setting
-
-* `FXMenu::loadUserPreset` looks like `loadSnapshot` in that it creates a new effect on the sync buffer, applies the value
-  from the preset, and raises an event
-* After that it's just like a same-type load
-
-## Swap an effect
-
-## The DAW automation path
-
-The DAW automation path comes in through `synth::setParameter01` and handles the `ct_fxtype` to do the spawn-and-replace.
-See the comments there for more.
+The DAW automation path enters through `synth::setParameter01`; the `ct_fxtype` case
+spawns and replaces the effect. See its comments for details.
