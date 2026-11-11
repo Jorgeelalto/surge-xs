@@ -1,7 +1,7 @@
 # Repository guidance
 
 - Do not git add, commit or push without asking first.
-- Do not run a test build unless I ask you to.
+- Do not run a build unless I ask you to. I will manually trigger the cmake build to test after changes are made.
 
 ## Primary references
 
