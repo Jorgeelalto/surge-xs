@@ -12,12 +12,13 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 - [ ] Select effects, filters and oscillators to keep.
    - Wanted FXs:
    - Wanted filters:
-   - Wanted oscillators:
-- [ ] Remove unwanted FXs, filters and oscillators from the codebase and from the UI.
+   - Wanted oscillators: Classic Sawtooth (rename to Saw), Classic Square (rename to Square), FM3 (rename to Sine FM).
+- [ ] Remove unwanted FXs from the codebase and from the UI.
+- [ ] Remove unwanted filters from the codebase and from the UI.
+- [ ] Remove unwanted oscillators from the codebase and from the UI.
 - [ ] Simplify waveshaper.
 - [ ] Simplify FX chain. Hardcode 3 serial FXs (chorus, delay and reverb).
 - [ ] Simplify filter routing, only one filter.
-- [ ] Simplify oscillator section, only two oscillators.
 - [ ] Simplify modulations (TBD).
 - [ ] Reorder GUI items. Make space for visualizations.
 - [ ] Add filter shape visualization.

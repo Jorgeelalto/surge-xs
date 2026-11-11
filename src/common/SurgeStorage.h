@@ -316,12 +316,12 @@ enum osc_type
 };
 
 const char osc_type_names[n_osc_types][24] = {"Classic",     "Sine",   "Wavetable", "S&H Noise",
-                                              "Audio Input", "FM3",    "FM2",       "Window",
+                                              "Audio Input", "Sine FM", "FM2",       "Window",
                                               "Modern",      "String", "Twist",     "Alias",
                                               /*, "Phase Distortion", "Chaos", "FM4"*/};
 
 const char osc_type_shortnames[n_osc_types][24] = {"Classic",  "Sine",   "WT",    "S&H Noise",
-                                                   "Audio In", "FM3",    "FM2",   "Window",
+                                                   "Audio In", "Sine FM", "FM2",   "Window",
                                                    "Modern",   "String", "Twist", "Alias",
                                                    /*, "PD", "Chaos", "FM4"*/};
 

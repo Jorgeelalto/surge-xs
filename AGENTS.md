@@ -1,5 +1,7 @@
 # Repository guidance
 
+- Do not git add, commit or push without asking first.
+
 ## Primary references
 
 For every code change, read and follow the [Developer Guide](doc/Developer_Guide.md) for coding style, naming, comments, formatting, and general implementation conventions. Also consult [Surge Architecture](doc/Surge_Architecture.md) for the code layout and the relationships between storage, parameters, the synthesizer, GUI, voices, DSP, and the headless host. The architecture document is an evolving overview, not a complete implementation guide.
