@@ -87,6 +87,8 @@ struct FilterSelectorMapper : public ParameterDiscreteIndexRemapper
 {
     std::vector<std::pair<int, std::string>> mapping;
     std::unordered_map<int, int> inverseMapping;
+    std::vector<int> displayOrder;
+    std::unordered_map<int, int> displayIndex;
     void p(int i, const std::string &s) { mapping.push_back(std::make_pair(i, s)); }
     FilterSelectorMapper()
     {
@@ -139,19 +141,27 @@ struct FilterSelectorMapper : public ParameterDiscreteIndexRemapper
         for (auto e : mapping)
             inverseMapping[e.first] = c++;
 
+        displayOrder = {FilterType::fut_none,       FilterType::fut_obxd_2pole_lp,
+                        FilterType::fut_diode,      FilterType::fut_k35_lp,
+                        FilterType::fut_bp12,       FilterType::fut_hp24};
+        int index = 0;
+        for (const auto type : displayOrder)
+            displayIndex[type] = index++;
+
         if (mapping.size() != FilterType::num_filter_types)
             std::cout << "BAD MAPPING TYPES" << std::endl;
     }
 
     virtual int remapStreamedIndexToDisplayIndex(int i) const override
     {
-        return inverseMapping.at(i);
+        auto it = displayIndex.find(i);
+        return it == displayIndex.end() ? -1 : it->second;
     }
     virtual std::string nameAtStreamedIndex(int i) const override
     {
         return sst::filters::filter_menu_names[i];
     }
-    virtual bool hasGroupNames() const override { return true; };
+    virtual bool hasGroupNames() const override { return false; };
 
     virtual std::string groupNameAtStreamedIndex(int i) const override
     {
@@ -164,10 +174,7 @@ struct FilterSelectorMapper : public ParameterDiscreteIndexRemapper
     virtual bool supportsTotalIndexOrdering() const override { return true; }
     virtual const std::vector<int> totalIndexOrdering() const override
     {
-        auto res = std::vector<int>();
-        for (auto m : mapping)
-            res.push_back(m.first);
-        return res;
+        return displayOrder;
     }
 };
 

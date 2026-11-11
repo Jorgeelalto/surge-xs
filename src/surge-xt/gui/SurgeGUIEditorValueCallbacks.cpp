@@ -1868,7 +1868,7 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
                                 std::string displaytxt = dm->nameAtStreamedIndex(i);
                                 juce::PopupMenu *addTo;
 
-                                if (useSubMenus && grpN == "")
+                                if (!useSubMenus || grpN == "")
                                 {
                                     addTo = &contextMenu;
                                 }
@@ -1908,7 +1908,7 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
                                 });
                             }
 
-                            if (sub.getNumItems() > 0)
+                            if (useSubMenus && sub.getNumItems() > 0)
                             {
                                 contextMenu.addSubMenu(grpN, sub, true, nullptr, isSubChecked, 0);
                             }

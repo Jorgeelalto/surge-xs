@@ -12,6 +12,9 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 - [ ] Select effects, filters and oscillators to keep.
    - Wanted FXs:
    - Wanted filters:
+      - Lowpass: OB-Xd 12 dB, Diode Ladder, K35.
+      - Bandpass: 12 dB.
+      - Highpass: 24 dB. 
    - Wanted oscillators: Classic Sawtooth (rename to Saw), Classic Square (rename to Square), FM3 (rename to Sine FM).
 - [ ] Remove unwanted FXs from the codebase and from the UI.
 - [ ] Remove unwanted filters from the codebase and from the UI.
