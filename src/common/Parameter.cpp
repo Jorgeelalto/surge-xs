@@ -475,7 +475,6 @@ bool Parameter::is_discrete_selection() const
     case ct_flangermode:
     case ct_fxlfowave:
     case ct_fxlfowave_extended:
-    case ct_distortion_waveshape:
     case ct_reson_mode:
     case ct_vocoder_bandcount:
     case ct_nimbusmode:
@@ -545,7 +544,6 @@ void Parameter::set_user_data(ParamUserData *ud)
         break;
     case ct_filtertype:
     case ct_wstype:
-    case ct_distortion_waveshape:
         if (dynamic_cast<ParameterDiscreteIndexRemapper *>(ud))
         {
             user_data = ud;
@@ -976,7 +974,7 @@ void Parameter::set_type(int ctrltype)
         valtype = vt_int;
         val_min.i = 0;
         val_max.i = (int)sst::waveshapers::WaveshaperType::n_ws_types - 1;
-        val_default.i = 0;
+        val_default.i = static_cast<int>(sst::waveshapers::WaveshaperType::wst_soft);
         break;
     case ct_midikey_or_channel:
     case ct_midikey:
@@ -1133,12 +1131,6 @@ void Parameter::set_type(int ctrltype)
     case ct_vocoder_modulator_mode:
         val_min.i = 0;
         val_max.i = 3;
-        valtype = vt_int;
-        val_default.i = 0;
-        break;
-    case ct_distortion_waveshape:
-        val_min.i = 0;
-        val_max.i = n_fxws - 1;
         valtype = vt_int;
         val_default.i = 0;
         break;
@@ -3896,8 +3888,10 @@ std::string Parameter::get_display(bool external, float ef) const
             break;
         }
         case ct_wstype:
-            txt = sst::waveshapers::wst_names[limit_range(
-                i, 0, (int)sst::waveshapers::WaveshaperType::n_ws_types - 1)];
+            txt = sst::waveshapers::wst_names[isAvailableWaveshaperType(i)
+                                                   ? i
+                                                   : static_cast<int>(
+                                                         sst::waveshapers::WaveshaperType::wst_soft)];
             break;
         case ct_envmode:
             txt = em_names[limit_range(i, 0, (int)n_env_modes - 1)];
@@ -4007,9 +4001,6 @@ std::string Parameter::get_display(bool external, float ef) const
             break;
         case ct_vocoder_bandcount:
             txt = fmt::format("{:d} bands", i);
-            break;
-        case ct_distortion_waveshape:
-            txt = sst::waveshapers::wst_names[(int)FXWaveShapers[limit_range(i, 0, n_fxws - 1)]];
             break;
         case ct_mscodec:
             switch (i)
@@ -4331,6 +4322,8 @@ void Parameter::set_value_f01(float v, bool force_integer)
     }
 
     bound_value(force_integer);
+    if (ctrltype == ct_wstype && !isAvailableWaveshaperType(val.i))
+        val.i = static_cast<int>(sst::waveshapers::WaveshaperType::wst_soft);
 }
 
 float Parameter::get_modulation_f01(float mod) const

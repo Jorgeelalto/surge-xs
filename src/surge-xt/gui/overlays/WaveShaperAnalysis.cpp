@@ -178,7 +178,7 @@ void WaveShaperAnalysis::recalcFromSlider()
 
     wss.init = SIMD_MM(cmpeq_ps)(SIMD_MM(setzero_ps)(), SIMD_MM(setzero_ps)()); // better way?
 
-    auto wsop = sst::waveshapers::GetQuadWaveshaper(wstype);
+    auto wsop = getAvailableWaveshaper(static_cast<int>(wstype));
 
     auto sliderDb = getDbValue();
     auto amp = powf(2.f, sliderDb / 18.f);

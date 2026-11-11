@@ -5549,10 +5549,6 @@ SurgeGUIEditor::layoutComponentForSkin(std::shared_ptr<Surge::GUI::Skin::Control
 
         waveshaperSelector->setDeactivated(p->appears_deactivated());
 
-        auto *parm = dynamic_cast<ParameterDiscreteIndexRemapper *>(p->user_data);
-        if (parm && parm->supportsTotalIndexOrdering())
-            waveshaperSelector->setIntOrdering(parm->totalIndexOrdering());
-
         setAccessibilityInformationByParameter(waveshaperSelector.get(), p, "Select");
         addAndMakeVisibleWithTrackingInCG(cg_FILTER, *waveshaperSelector);
         nonmod_param[paramIndex] = waveshaperSelector.get();

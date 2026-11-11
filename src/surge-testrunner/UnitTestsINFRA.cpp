@@ -270,10 +270,9 @@ TEST_CASE("Template Patches are Rational", "[infra]")
             for (int sc = 0; sc < n_scenes; ++sc)
             {
                 auto &scene = patch.scene[sc];
-                // Make sure the filters and waveshapers aren't off in each scene
+                // Make sure the filters aren't bypassed in each scene
                 REQUIRE(!scene.filterunit[0].type.deactivated);
                 REQUIRE(!scene.filterunit[1].type.deactivated);
-                REQUIRE(!scene.wsunit.type.deactivated);
 
                 // Make sure at least one oscillator is not muted in each
                 bool somethingOn = !scene.mute_o1.val.b || !scene.mute_o2.val.b ||

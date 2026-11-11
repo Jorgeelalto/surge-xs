@@ -931,7 +931,7 @@ void SurgePatch::init_default_values()
             scene[sc].filterunit[i].type.deactivated = false;
         }
 
-        scene[sc].wsunit.type.deactivated = false;
+        scene[sc].wsunit.type.deactivated = true;
 
         for (int i = 0; i < n_egs; i++)
         {
@@ -2275,6 +2275,28 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
         storage->reportError("This patch used one or more oscillators which are no longer "
                              "available. They have been replaced with Classic.",
                              "Unavailable Oscillators");
+    }
+
+    bool removedWaveshaper = false;
+    for (auto &sc : scene)
+    {
+        auto &type = sc.wsunit.type;
+        if (type.val.i == static_cast<int>(sst::waveshapers::WaveshaperType::wst_none))
+        {
+            type.val.i = static_cast<int>(sst::waveshapers::WaveshaperType::wst_soft);
+            type.deactivated = true;
+        }
+        else if (!isAvailableWaveshaperType(type.val.i))
+        {
+            type.val.i = static_cast<int>(sst::waveshapers::WaveshaperType::wst_soft);
+            removedWaveshaper = true;
+        }
+    }
+    if (removedWaveshaper)
+    {
+        storage->reportError("This patch used one or more waveshapers which are no longer "
+                             "available. They have been replaced with Soft.",
+                             "Unavailable Waveshapers");
     }
 
     bool removedEffect = false;

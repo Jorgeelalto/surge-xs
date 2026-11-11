@@ -276,8 +276,8 @@ TEST_CASE("Unavailable oscillators cannot be loaded", "[io][osc]")
     {
         for (int type = 0; type < n_osc_types; ++type)
         {
-            surge->setParameter01(osc.type.id, static_cast<float>(type) / (n_osc_types - 1),
-                                  false);
+            surge->setParameter01(surge->idForParameter(&osc.type),
+                                  static_cast<float>(type) / (n_osc_types - 1), false);
             surge->process();
             REQUIRE(osc.type.val.i == (type == ot_FM3 ? ot_FM3 : ot_classic));
         }
@@ -291,6 +291,84 @@ TEST_CASE("Unavailable oscillators cannot be loaded", "[io][osc]")
         REQUIRE(osc.queue_type == -1);
         REQUIRE(errors.message.find("no longer available") != std::string::npos);
     }
+    storage.removeErrorListener(&errors);
+}
+
+TEST_CASE("Only retained waveshapers are selectable", "[io][waveshaper]")
+{
+    using sst::waveshapers::WaveshaperType;
+    const auto soft = static_cast<int>(WaveshaperType::wst_soft);
+    const auto asym = static_cast<int>(WaveshaperType::wst_asym);
+    const auto ojd = static_cast<int>(WaveshaperType::wst_ojd);
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    auto &storage = surge->storage;
+    auto &patch = storage.getPatch();
+    auto &type = patch.scene[0].wsunit.type;
+    WavErrorCatcher errors;
+    storage.addErrorListener(&errors);
+
+    SECTION("Default is bypassed Soft")
+    {
+        patch.init_default_values();
+        REQUIRE(type.val.i == soft);
+        REQUIRE(type.deactivated);
+    }
+
+    SECTION("Selector mapping")
+    {
+        const auto &mapper = patch.patchWaveshaperSelectorMapper;
+        REQUIRE((mapper.totalIndexOrdering() == std::vector<int>{soft, asym, ojd}));
+        for (int i = 0; i < static_cast<int>(WaveshaperType::n_ws_types); ++i)
+        {
+            const auto mapped = mapper.remapStreamedIndexToDisplayIndex(i);
+            REQUIRE((mapped >= 0) == (i == soft || i == asym || i == ojd));
+            REQUIRE((getAvailableWaveshaper(i) != nullptr) == (mapped >= 0));
+        }
+    }
+
+    SECTION("Legacy off and unsupported types")
+    {
+        const auto first = type.get_storage_name();
+        const auto second = patch.scene[1].wsunit.type.get_storage_name();
+        auto xml = fmt::format("<patch><parameters><{0} value=\"0\" deactivated=\"0\"/>"
+                               "<{1} value=\"2\" deactivated=\"0\"/></parameters></patch>",
+                               first, second);
+        patch.load_xml(xml.c_str(), static_cast<int>(xml.size()), false);
+        REQUIRE(type.val.i == soft);
+        REQUIRE(type.deactivated);
+        REQUIRE(patch.scene[1].wsunit.type.val.i == soft);
+        REQUIRE_FALSE(patch.scene[1].wsunit.type.deactivated);
+        REQUIRE(errors.message.find("replaced with Soft") != std::string::npos);
+    }
+
+    SECTION("Retained types and bypass survive a patch load")
+    {
+        const auto first = type.get_storage_name();
+        const auto second = patch.scene[1].wsunit.type.get_storage_name();
+        auto xml = fmt::format("<patch><parameters><{0} value=\"{2}\" deactivated=\"0\"/>"
+                               "<{1} value=\"{3}\" deactivated=\"1\"/></parameters></patch>",
+                               first, second, asym, ojd);
+        patch.load_xml(xml.c_str(), static_cast<int>(xml.size()), false);
+        REQUIRE(type.val.i == asym);
+        REQUIRE_FALSE(type.deactivated);
+        REQUIRE(patch.scene[1].wsunit.type.val.i == ojd);
+        REQUIRE(patch.scene[1].wsunit.type.deactivated);
+    }
+
+    SECTION("Automation cannot select removed types")
+    {
+        type.deactivated = false;
+        for (int i = 0; i < static_cast<int>(WaveshaperType::n_ws_types); ++i)
+        {
+            surge->setParameter01(surge->idForParameter(&type),
+                                  Parameter::intScaledToFloat(i, type.val_max.i, type.val_min.i),
+                                  false);
+            REQUIRE(type.val.i == (isAvailableWaveshaperType(i) ? i : soft));
+            REQUIRE_FALSE(type.deactivated);
+        }
+    }
+
     storage.removeErrorListener(&errors);
 }
 

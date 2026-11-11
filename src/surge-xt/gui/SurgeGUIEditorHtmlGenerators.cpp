@@ -977,7 +977,7 @@ std::string SurgeGUIEditor::patchToHtml(bool includeDefaults)
             htmls << tab3 << "</p>" << std::endl;
         }
 
-        if (sc.wsunit.type.val.i != (int)sst::waveshapers::WaveshaperType::wst_none)
+        if (!sc.wsunit.type.deactivated)
         {
             htmls << std::endl
                   << tab3 << "<h3>Waveshaper</h3>" << std::endl

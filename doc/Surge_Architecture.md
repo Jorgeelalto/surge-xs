@@ -57,6 +57,12 @@ The voice class is `SurgeVoice` in `src/common/dsp/SurgeVoice.h`, and contains a
 Most DSP operations use hand-coded SSE2 for speed. As a result, data structures must be
 aligned on 16-byte boundaries.
 
+The scene waveshaper offers Soft, Asymmetric, and OJD. Double-click its waveform or use
+the Enabled menu item to bypass it. Legacy Off patches load with Soft selected and
+bypassed; unavailable types are replaced with Soft and reported. Automation targeting an
+unavailable type selects Soft without changing bypass. The shared waveshaper library is
+also used by other DSP, including the LFO and Ensemble.
+
 ## Headless
 
 The headless host runs Surge without a UI and is used primarily for debugging and tests.

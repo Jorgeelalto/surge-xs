@@ -70,7 +70,7 @@ TEST_CASE("Run Every Filter", "[flt]")
 
 TEST_CASE("Run Every Waveshaper", "[flt]")
 {
-    for (int wt = 0; wt < (int)sst::waveshapers::WaveshaperType::n_ws_types; wt++)
+    for (int wt : availableWaveshaperTypes)
     {
         DYNAMIC_SECTION("Test Waveshaper " << sst::waveshapers::wst_names[wt])
         {
@@ -80,6 +80,7 @@ TEST_CASE("Run Every Waveshaper", "[flt]")
             for (int q = 0; q < n_filter_configs; ++q)
             {
                 surge->storage.getPatch().scene[0].wsunit.type.val.i = wt;
+                surge->storage.getPatch().scene[0].wsunit.type.deactivated = false;
                 surge->storage.getPatch().scene[0].wsunit.drive.set_value_f01(0.8);
 
                 int len = BLOCK_SIZE * 4;

@@ -128,9 +128,6 @@ struct WaveShaperSelector : public juce::Component,
     bool everDragged{false},
         everMoved{false}; // the first is if we change the second if we move at all
 
-    std::vector<int> intOrdering;
-    void setIntOrdering(const std::vector<int> &io) { intOrdering = io; }
-
     void mouseWheelMove(const juce::MouseEvent &e, const juce::MouseWheelDetails &w) override;
     Surge::GUI::WheelAccumulationHelper wheelAccumulationHelper;
     float nextValueInOrder(float v, int inc);

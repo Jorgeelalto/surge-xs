@@ -61,7 +61,7 @@ void WaveShaperSelector::paint(juce::Graphics &g)
             vals[0] = 0.f;
         }
 
-        auto wsop = sst::waveshapers::GetQuadWaveshaper(iValue);
+        auto wsop = getAvailableWaveshaper(static_cast<int>(iValue));
         sst::waveshapers::QuadWaveshaperState s;
         float R alignas(16)[4];
 
@@ -120,7 +120,10 @@ void WaveShaperSelector::paint(juce::Graphics &g)
     }
 
     g.setFont(skin->fontManager->getLatoAtSize(7));
-    g.drawText(wst_ui_names[(int)iValue], getLocalBounds().withHeight(labelHeight),
+    const char *label = iValue == WaveshaperType::wst_asym
+                            ? "Asym"
+                            : sst::waveshapers::wst_names[static_cast<int>(iValue)];
+    g.drawText(label, getLocalBounds().withHeight(labelHeight),
                juce::Justification::centred);
 
     // So the wave is in -2,2 in x and -1,1 in y
@@ -326,61 +329,13 @@ void WaveShaperSelector::jog(int by)
 float WaveShaperSelector::nextValueInOrder(float v, int inc)
 {
     int iv = Parameter::intUnscaledFromFloat(v, (int)WaveshaperType::n_ws_types - 1, 0);
-    if (!intOrdering.empty() && (int)WaveshaperType::n_ws_types == intOrdering.size())
-    {
-        int pidx = 0;
-
-        for (int idx = 0; idx < intOrdering.size(); idx++)
-        {
-            if (intOrdering[idx] == iv)
-            {
-                pidx = idx;
-                break;
-            }
-        }
-
-        int nidx = pidx + inc;
-
-        if (nidx < 0)
-        {
-            nidx = intOrdering.size() - 1;
-        }
-        else if (nidx >= intOrdering.size())
-        {
-            nidx = 0;
-        }
-
-        while (intOrdering[nidx] < 0)
-        {
-            nidx += inc;
-
-            if (nidx < 0)
-            {
-                nidx = intOrdering.size() - 1;
-            }
-
-            if (nidx >= intOrdering.size())
-            {
-                nidx = 0;
-            }
-        }
-
-        iv = intOrdering[nidx];
-    }
-    else
-    {
-        iv = iv + inc;
-
-        if (iv < 0)
-        {
-            iv = (int)WaveshaperType::n_ws_types - 1;
-        }
-
-        if (iv > (int)WaveshaperType::n_ws_types - 1)
-        {
-            iv = 0;
-        }
-    }
+    WaveShaperSelectorMapper mapper;
+    int index = mapper.remapStreamedIndexToDisplayIndex(iv);
+    if (index < 0)
+        index = 0;
+    const int count = static_cast<int>(availableWaveshaperTypes.size());
+    index = ((index + inc) % count + count) % count;
+    iv = availableWaveshaperTypes[index];
 
     // This is the get_value_f01 code
     float r = Parameter::intScaledToFloat(iv, (int)WaveshaperType::n_ws_types - 1, 0);
@@ -399,8 +354,32 @@ void WaveShaperSelector::onSkinChanged()
 
 template <> struct DiscreteAHRange<WaveShaperSelector>
 {
-    static int iMaxV(WaveShaperSelector *t) { return (int)WaveshaperType::n_ws_types - 1; }
+    static int iMaxV(WaveShaperSelector *t)
+    {
+        return static_cast<int>(availableWaveshaperTypes.size()) - 1;
+    }
     static int iMinV(WaveShaperSelector *t) { return 0; }
+};
+
+template <> struct DiscreteAHGetSetValue<WaveShaperSelector>
+{
+    static double getCurrentValue(WaveShaperSelector *comp)
+    {
+        WaveShaperSelectorMapper mapper;
+        return mapper.remapStreamedIndexToDisplayIndex(static_cast<int>(comp->iValue));
+    }
+
+    static void setValue(WaveShaperSelector *comp, double newValue)
+    {
+        const auto index = std::clamp(static_cast<int>(std::round(newValue)), 0,
+                                      static_cast<int>(availableWaveshaperTypes.size()) - 1);
+        comp->notifyBeginEdit();
+        comp->setValue(Parameter::intScaledToFloat(
+            availableWaveshaperTypes[index], static_cast<int>(WaveshaperType::n_ws_types) - 1, 0));
+        comp->notifyValueChanged();
+        comp->notifyEndEdit();
+        comp->repaint();
+    }
 };
 
 template <> struct DiscreteAHStringValue<WaveShaperSelector>
@@ -408,9 +387,9 @@ template <> struct DiscreteAHStringValue<WaveShaperSelector>
     static std::string stringValue(WaveShaperSelector *comp, double ahValue)
     {
         auto r = (int)std::round(ahValue);
-        if (r < 0 || r > (int)WaveshaperType::n_ws_types - 1)
+        if (r < 0 || r >= static_cast<int>(availableWaveshaperTypes.size()))
             return "ERROR";
-        return sst::waveshapers::wst_names[r];
+        return sst::waveshapers::wst_names[availableWaveshaperTypes[r]];
     }
 };
 

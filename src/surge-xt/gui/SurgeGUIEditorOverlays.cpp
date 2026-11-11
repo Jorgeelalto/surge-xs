@@ -375,7 +375,10 @@ std::unique_ptr<Surge::Overlays::OverlayComponent> SurgeGUIEditor::createOverlay
 
         wsa->setSkin(currentSkin, bitmapStore);
         wsa->setEnclosingParentTitle("Waveshaper Analysis");
-        wsa->setWSType(synth->storage.getPatch().scene[current_scene].wsunit.type.val.i);
+        auto &type = synth->storage.getPatch().scene[current_scene].wsunit.type;
+        wsa->setWSType(type.deactivated
+                           ? static_cast<int>(sst::waveshapers::WaveshaperType::wst_none)
+                           : type.val.i);
         wsa->setCanTearOut({true, Surge::Storage::WSAnalysisOverlayLocationTearOut,
                             Surge::Storage::WSAnalysisOverlayTearOutAlwaysOnTop,
                             Surge::Storage::WSAnalysisOverlayTearOutAlwaysOnTop_Plugin});
@@ -738,7 +741,9 @@ void SurgeGUIEditor::updateWaveshaperOverlay()
 {
     auto wso =
         dynamic_cast<Surge::Overlays::WaveShaperAnalysis *>(getOverlayIfOpen(WAVESHAPER_ANALYZER));
-    auto t = synth->storage.getPatch().scene[current_scene].wsunit.type.val.i;
+    auto &type = synth->storage.getPatch().scene[current_scene].wsunit.type;
+    auto t = type.deactivated ? static_cast<int>(sst::waveshapers::WaveshaperType::wst_none)
+                              : type.val.i;
     if (wso)
     {
         wso->setWSType(t);
