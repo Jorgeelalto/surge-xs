@@ -33,7 +33,7 @@ namespace chowdsp
 {
 
 /**
- * Some SIMD versions of the WDF classes in wdf.h
+ * SIMD wave digital filter classes.
  */
 namespace WDF_SSE
 {

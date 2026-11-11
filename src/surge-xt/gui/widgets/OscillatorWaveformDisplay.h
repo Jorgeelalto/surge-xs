@@ -149,9 +149,7 @@ struct OscillatorWaveformDisplay : public juce::Component,
     static constexpr int wt3DControlWidth = 20;
     std::unique_ptr<juce::Component> customEditor;
 
-    // One tab stop covering the name and both jog arrows, as the impulse response
-    // loader does. The arrows are steered from here with the up/down keys rather than
-    // being tab stops of their own.
+    // One tab stop covers the name and both jog arrows, steered with the up/down keys.
     std::unique_ptr<juce::Component> wavetableAccOverlay;
     std::unique_ptr<juce::Component> customEditorAccOverlay;
     std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;

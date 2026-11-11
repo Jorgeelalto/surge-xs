@@ -1363,13 +1363,6 @@ void Parameter::set_type(int ctrltype)
         val_default.f = 1.f;
         break;
 
-    case ct_convolution_delay:
-        valtype = vt_float;
-        val_min.f = 0.f;
-        val_max.f = 1.f;
-        val_default.f = 0.f;
-        break;
-
     case ct_none:
     default:
         snprintf(dispname, NAMECHARS, "-");
@@ -1714,12 +1707,6 @@ void Parameter::set_type(int ctrltype)
         snprintf(displayInfo.maxLabel, DISPLAYINFO_TXT_SIZE, "On");
         break;
 
-    case ct_convolution_delay:
-        displayType = LinearWithScale;
-        displayInfo.customFeatures |= ParamDisplayFeatures::kSwitchesFromSecToMillisec;
-        displayInfo.decimals = 2;
-        snprintf(displayInfo.unit, DISPLAYINFO_TXT_SIZE, "s");
-        break;
     }
 
     switch (ctrltype)

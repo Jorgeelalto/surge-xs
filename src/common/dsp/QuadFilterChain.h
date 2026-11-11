@@ -116,9 +116,7 @@
  *
  * Finally, the filter types, subtypes and names thereof are enumerated in SurgeStorage.h.
  *
- * There are a few more Surge filter functions - the Allpass BiquadFilter and VectorizedSVFFilter
- * are used by various FX in a different context and they don't follow this architecture. That code
- * is fairly clear, though.
+ * The BiquadFilter is also used outside this architecture, including by effects.
  */
 
 #include "globals.h"

@@ -121,10 +121,6 @@ add_library(${PROJECT_NAME}
   dsp/WtGenService.h
   dsp/effects/BBDEnsembleEffect.cpp
   dsp/effects/BBDEnsembleEffect.h
-  dsp/effects/ConditionerEffect.cpp
-  dsp/effects/ConditionerEffect.h
-  dsp/effects/ConvolutionEffect.cpp
-  dsp/effects/ConvolutionEffect.h
   dsp/effects/DelayEffect.cpp
   dsp/effects/DelayEffect.h
   dsp/effects/ModControl.h
@@ -135,8 +131,6 @@ add_library(${PROJECT_NAME}
   dsp/effects/chowdsp/bbd_utils/BBDFilterBank.h
   dsp/effects/chowdsp/bbd_utils/BBDNonlin.h
   dsp/filters/BiquadFilter.h
-  dsp/filters/VectorizedSVFilter.cpp
-  dsp/filters/VectorizedSVFilter.h
   dsp/modulators/ADSRModulationSource.h
   dsp/modulators/FormulaModulationHelper.cpp
   dsp/modulators/FormulaModulationHelper.h
@@ -232,10 +226,6 @@ else()
 endif()
 
 target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_BINARY_DIR}/geninclude/version.cpp)
-
-# r8brain isn't cmaked but it's just one file
-target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/r8brain-free-src/r8bbase.cpp)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/r8brain-free-src)
 
 add_library(surge::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}

@@ -1067,7 +1067,7 @@ class SurgeGUIEditor : public Surge::GUI::IComponentTagValue::Listener,
     void reloadFromSkin();
 
   public:
-    // Re-scan every user-data folder (patches, wavetables, IRs, FX, modulator
+    // Re-scan every user-data folder (patches, wavetables, FX, modulator
     // presets, MIDI mappings, skins) and reapply the current skin. Use after
     // changing the user data folder or when the user asks for a manual rescan.
     void rescanAllDataFolders();

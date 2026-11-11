@@ -1100,9 +1100,6 @@ void SurgeGUIEditor::idle()
             }
         }
 
-        dynamic_cast<Surge::Widgets::CurrentFxDisplay *>(frame->getControlGroupLayer(cg_FX))
-            ->renderCurrentFx();
-
         for (int i = 0; i < 8; i++)
         {
             if (synth->refresh_ctrl_queue[i] >= 0)
@@ -4196,7 +4193,6 @@ void SurgeGUIEditor::rescanAllDataFolders()
 
     storage.refresh_wtlist();
     storage.refresh_patchlist();
-    storage.refresh_irlist();
     storage.rescanUserMidiMappings();
 
     if (storage.fxUserPreset)

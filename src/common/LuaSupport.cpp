@@ -23,6 +23,10 @@
 #include "LuaSupport.h"
 #include "lua/LuaSources.h"
 
+#if HAS_LUA
+#include <pffft.h>
+#endif
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -165,10 +169,11 @@ static int pffftTransform(lua_State *L, FFTTransform transform, FFTDirection dir
 {
 #if HAS_LUA
 
-    pffft_direction_t pffftDir =
-        (direction == FFTDirection::Forward) ? PFFFT_FORWARD : PFFFT_BACKWARD;
+    pffft::pffft_direction_t pffftDir =
+        (direction == FFTDirection::Forward) ? pffft::PFFFT_FORWARD : pffft::PFFFT_BACKWARD;
 
-    pffft_transform_t pffftTrans = (transform == FFTTransform::Real) ? PFFFT_REAL : PFFFT_COMPLEX;
+    pffft::pffft_transform_t pffftTrans =
+        (transform == FFTTransform::Real) ? pffft::PFFFT_REAL : pffft::PFFFT_COMPLEX;
 
     // Check for an input table
     if (!lua_istable(L, 1))
@@ -186,7 +191,7 @@ static int pffftTransform(lua_State *L, FFTTransform transform, FFTDirection dir
     // For complex transforms the input contains real/imaginary pairs so the FFT size N is half the
     // table length
     int N = tableLength;
-    if (pffftTrans == PFFFT_COMPLEX)
+    if (pffftTrans == pffft::PFFFT_COMPLEX)
     {
         N /= 2;
     }
@@ -208,7 +213,7 @@ static int pffftTransform(lua_State *L, FFTTransform transform, FFTDirection dir
             functionName, tableLength);
     }
 
-    PFFFT_Setup *setup = pffft_new_setup(N, pffftTrans);
+    pffft::PFFFT_Setup *setup = pffft::pffft_new_setup(N, pffftTrans);
     if (!setup)
     {
         return luaL_error(L, "%s error: Failed to create setup for %d elements.", functionName,
@@ -216,15 +221,15 @@ static int pffftTransform(lua_State *L, FFTTransform transform, FFTDirection dir
     }
 
     // Allocate aligned buffers, these must be freed with pffft_aligned_free()
-    float *input = (float *)pffft_aligned_malloc(tableLength * sizeof(float));
-    float *output = (float *)pffft_aligned_malloc(tableLength * sizeof(float));
-    float *work = (float *)pffft_aligned_malloc(tableLength * sizeof(float));
+    float *input = (float *)pffft::pffft_aligned_malloc(tableLength * sizeof(float));
+    float *output = (float *)pffft::pffft_aligned_malloc(tableLength * sizeof(float));
+    float *work = (float *)pffft::pffft_aligned_malloc(tableLength * sizeof(float));
     if (!input || !output || !work)
     {
-        pffft_aligned_free(input);
-        pffft_aligned_free(output);
-        pffft_aligned_free(work);
-        pffft_destroy_setup(setup);
+        pffft::pffft_aligned_free(input);
+        pffft::pffft_aligned_free(output);
+        pffft::pffft_aligned_free(work);
+        pffft::pffft_destroy_setup(setup);
         return luaL_error(L, "%s error: Out of memory!", functionName);
     }
 
@@ -233,10 +238,10 @@ static int pffftTransform(lua_State *L, FFTTransform transform, FFTDirection dir
         lua_rawgeti(L, 1, i + 1);
         if (!lua_isnumber(L, -1))
         {
-            pffft_aligned_free(input);
-            pffft_aligned_free(output);
-            pffft_aligned_free(work);
-            pffft_destroy_setup(setup);
+            pffft::pffft_aligned_free(input);
+            pffft::pffft_aligned_free(output);
+            pffft::pffft_aligned_free(work);
+            pffft::pffft_destroy_setup(setup);
             lua_pop(L, 1); // Pop non-number
             return luaL_error(L, "%s error: table element %d is not a number.", functionName,
                               i + 1);
@@ -244,7 +249,7 @@ static int pffftTransform(lua_State *L, FFTTransform transform, FFTDirection dir
         input[i] = lua_tonumber(L, -1);
         lua_pop(L, 1); // Pop number
     }
-    pffft_transform_ordered(setup, input, output, work, pffftDir);
+    pffft::pffft_transform_ordered(setup, input, output, work, pffftDir);
 
     lua_newtable(L);
     for (int i = 0; i < tableLength; i++)
@@ -254,10 +259,10 @@ static int pffftTransform(lua_State *L, FFTTransform transform, FFTDirection dir
     }
 
     // Clean up allocated buffers and PFFFT_Setup
-    pffft_aligned_free(input);
-    pffft_aligned_free(output);
-    pffft_aligned_free(work);
-    pffft_destroy_setup(setup);
+    pffft::pffft_aligned_free(input);
+    pffft::pffft_aligned_free(output);
+    pffft::pffft_aligned_free(work);
+    pffft::pffft_destroy_setup(setup);
 
     return 1;
 #else

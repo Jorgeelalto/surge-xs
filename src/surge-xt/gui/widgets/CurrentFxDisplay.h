@@ -27,7 +27,6 @@
 #include "EffectLabel.h"
 #include "MainFrame.h"
 #include "SurgeStorage.h"
-#include "VuMeter.h"
 
 #include <array>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -43,32 +42,13 @@ class CurrentFxDisplay : public MainFrame::OverlayComponent
     explicit CurrentFxDisplay(SurgeGUIEditor *e);
     ~CurrentFxDisplay() override;
 
-    void renderCurrentFx();
     void updateCurrentFx(int current_fx);
-
-    // For dropping files, right now only used in convolution reverb.
-    bool canDropTarget(const juce::String &file);
-    void onDrop(const juce::String &files);
 
     std::unordered_map<std::string, std::string> uiidToSliderLabel;
     SurgeStorage *storage{nullptr};
 
-    // Okay, this one is a bit weird. We trigger off an FX reload with some
-    // operations (loading a new IR). When this happens, the original FX layout
-    // gets redone and we go through a new FX layout. Focus gets wiped if that
-    // happens, so we have to remind ourselves to refocus on where it had it
-    // last once we redo the layout.
-    bool had_focus;
-
   private:
-    // Individual FX layouts.
     void defaultLayout();
-    void conditionerLayout();
-    void convolutionLayout();
-    void vocoderLayout();
-
-    // Individual renders.
-    void conditionerRender();
 
     // Generic layout helpers.
     void layoutFxSelector();
@@ -85,13 +65,6 @@ class CurrentFxDisplay : public MainFrame::OverlayComponent
 
     // Used by everything.
     std::array<std::unique_ptr<Surge::Widgets::EffectLabel>, n_fx_params> labels_;
-    // Used by the conditioner.
-    std::array<std::unique_ptr<Surge::Widgets::VuMeter>, 3> vus;
-
-    // Used by convolution.
-    std::unique_ptr<juce::Component> irbutton;
-    std::unique_ptr<juce::Component> menu;
-
     // Note: Due to the existing code that refers to it, the effectChooser and
     // fxPresetLabel widgets are held in the SurgeGUIEditor class, rather than here.
     // If the code (callbacks) can end up localized here too, we can move the

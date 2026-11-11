@@ -22,7 +22,6 @@
 #ifndef SURGE_SRC_COMMON_DSP_EFFECTS_CHOWDSP_BBD_UTILS_BBDNONLIN_H
 #define SURGE_SRC_COMMON_DSP_EFFECTS_CHOWDSP_BBD_UTILS_BBDNONLIN_H
 
-// #include "../shared/wdf.h"
 #include "../shared/wdf_sse.h"
 #include "../shared/omega.h"
 #include <memory>

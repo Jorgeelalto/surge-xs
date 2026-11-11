@@ -1434,10 +1434,8 @@ void OscillatorWaveformDisplay::loadWavetable(int id)
 
             // However the wavetable got picked - jog arrow, menu entry or arrow key - leave
             // the focus on the selector, so the keyboard can carry straight on from there.
-            // The impulse response loader gets this for free from its reload, which relays
-            // the FX out and refocuses it. Only worth doing while we are on screen, since
-            // the menu action runs asynchronously and JUCE asserts on a focus grab into a
-            // component which is not showing.
+            // Only do this while on screen, since the menu action runs asynchronously and JUCE
+            // asserts on a focus grab into a component which is not showing.
             if (wavetableAccOverlay->isShowing())
             {
                 Surge::GUI::grabKeyboardFocusIfAllowed(wavetableAccOverlay.get());

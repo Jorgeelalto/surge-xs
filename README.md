@@ -16,12 +16,12 @@ This readme serves as the root of developer documentation for Surge XT, which fo
       - Bandpass: 12 dB.
       - Highpass: 24 dB.
    - Wanted oscillators: Classic Sawtooth (rename to Saw), Classic Square (rename to Square), FM3 (rename to Sine FM).
-- [ ] Remove unwanted FXs from the UI.
-- [ ] Remove unwanted filters from the UI.
-- [ ] Remove unwanted oscillators from UI.
-- [ ] Remove unwanted FXs from the codebase.
-- [ ] Remove unwanted filters from the codebase.
-- [ ] Remove unwanted oscillators from codebase.
+- [x] Remove unwanted FXs from the UI.
+- [x] Remove unwanted filters from the UI.
+- [x] Remove unwanted oscillators from UI.
+- [x] Remove unwanted FXs from the codebase.
+- [x] Remove unwanted filters from the codebase.
+- [x] Remove unwanted oscillators from codebase.
 - [ ] Simplify waveshaper.
 - [ ] Simplify FX chain. Hardcode 3 serial FXs (chorus, delay and reverb).
 - [ ] Simplify filter routing, only one filter.

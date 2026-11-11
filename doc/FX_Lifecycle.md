@@ -7,9 +7,8 @@ Only Ensemble, Delay, and Reverb 1 can be selected or instantiated. Other effect
 remain reserved so the retained effects keep their original patch and automation IDs.
 Loading a patch or FX preset using an unavailable effect turns that slot off and reports
 a warning; automation targeting an unavailable ID turns the slot off. Presets for
-unavailable effects are omitted from the menu. Most unused effect implementations have
-been removed; Conditioner and Convolution still build for their legacy GUI code, but
-cannot be instantiated.
+unavailable effects are omitted from the menu. Unused effect implementations, including
+Conditioner and Convolution, have been removed.
 
 ## Core structures and functions
 
