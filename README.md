@@ -22,7 +22,9 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 - [x] Remove unwanted FXs from the codebase.
 - [x] Remove unwanted filters from the codebase.
 - [x] Remove unwanted oscillators from codebase.
-- [ ] Simplify waveshaper.
+- [x] Simplify waveshaper.
+- [x] Remove right-click menu parameter name and help link.
+- [ ] Remove patch functionality.
 - [ ] Simplify FX chain. Hardcode 3 serial FXs (chorus, delay and reverb).
 - [ ] Simplify filter routing, only one filter.
 - [ ] Simplify modulations (TBD).

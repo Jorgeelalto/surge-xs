@@ -2445,18 +2445,6 @@ void LFOAndStepDisplay::showLFODisplayPopupMenu(SurgeGUIEditor::OverlayTags tag)
     auto contextMenu = juce::PopupMenu();
 
     std::string olname = isMSEG() ? "MSEG Editor" : "Formula Editor";
-    std::string helpname = isMSEG() ? "mseg-editor" : "formula-editor";
-
-    auto msurl = storage ? SurgeGUIEditor::helpURLForSpecial(storage, helpname) : std::string();
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-    auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(olname, hurl);
-    hmen->setSkin(skin, associatedBitmapStore);
-    auto hment = hmen->getTitle();
-
-    contextMenu.addCustomItem(-1, std::move(hmen), nullptr, hment);
-
-    contextMenu.addSeparator();
 
     auto sge = firstListenerOfType<SurgeGUIEditor>();
 
@@ -2719,20 +2707,6 @@ void LFOAndStepDisplay::showStepRMB(const juce::MouseEvent &event)
 void LFOAndStepDisplay::showStepRMB(int i)
 {
     auto contextMenu = juce::PopupMenu();
-
-    std::string olname = "Step Sequencer";
-    std::string helpname = "step-sequencer";
-
-    auto msurl = storage ? SurgeGUIEditor::helpURLForSpecial(storage, helpname) : std::string();
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-    auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(olname, hurl);
-    hmen->setSkin(skin, associatedBitmapStore);
-    auto hment = hmen->getTitle();
-
-    contextMenu.addCustomItem(-1, std::move(hmen), nullptr, hment);
-
-    contextMenu.addSeparator();
 
     const int precision = Surge::Storage::getValueDisplayPrecision(storage);
 

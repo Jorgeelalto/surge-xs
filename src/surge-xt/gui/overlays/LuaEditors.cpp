@@ -2744,18 +2744,7 @@ struct FormulaControlArea : public juce::Component,
         case tag_debugger_show:
         case tag_debugger_init:
         case tag_debugger_step:
-        {
-            auto contextMenu = juce::PopupMenu();
-
-            auto msurl = editor->helpURLForSpecial("formula-editor");
-            auto hurl = editor->fullyResolvedHelpURL(msurl);
-
-            editor->addHelpHeaderTo("Formula Editor", hurl, contextMenu);
-
-            contextMenu.showMenuAsync(editor->popupMenuOptions(this, false),
-                                      Surge::GUI::makeEndHoverCallback(pControl));
-        }
-        break;
+            return 1;
         default:
             break;
         }
@@ -3671,18 +3660,7 @@ struct WavetableScriptControlArea : public juce::Component,
         case tag_current_frame:
         case tag_generate_wt:
         case tag_select_rendermode:
-        {
-            auto contextMenu = juce::PopupMenu();
-
-            auto msurl = editor->helpURLForSpecial("wts-editor");
-            auto hurl = editor->fullyResolvedHelpURL(msurl);
-
-            editor->addHelpHeaderTo("Wavetable Script Editor", hurl, contextMenu);
-
-            contextMenu.showMenuAsync(editor->popupMenuOptions(this, false),
-                                      Surge::GUI::makeEndHoverCallback(pControl));
-        }
-        break;
+            break;
         case tag_res_value:
         {
             menuName = "Samples Per Wavetable Frame";
@@ -3741,17 +3719,6 @@ struct WavetableScriptControlArea : public juce::Component,
         if (!options.empty())
         {
             auto contextMenu = juce::PopupMenu();
-
-            auto msurl = SurgeGUIEditor::helpURLForSpecial(overlay->storage, "wts-editor");
-            auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-            auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(menuName, hurl);
-
-            tcomp->setSkin(skin, associatedBitmapStore);
-            auto hment = tcomp->getTitle();
-
-            contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-            contextMenu.addSeparator();
 
             for (const auto &op : options)
             {
@@ -4480,13 +4447,7 @@ void WavetableScriptEditor::createMenu(juce::PopupMenu &menu)
         menu.addItem("Export for VCV Rack...", [this]() {
             this->editor->exportWavetableAs(SurgeGUIEditor::WTExportFormat::VCVRACK);
         });
-        menu.addSeparator();
     }
-
-    auto msurl = editor->helpURLForSpecial("wts-editor");
-    auto hurl = editor->fullyResolvedHelpURL(msurl);
-
-    editor->addHelpHeaderTo("Wavetable Script Editor", hurl, menu);
 }
 
 bool WavetableScriptEditor::categoryHasWtscript(int categoryId) const

@@ -2578,26 +2578,9 @@ void SurgeGUIEditor::setParameter(long index, float value)
     }
 }
 
-void SurgeGUIEditor::addHelpHeaderTo(const std::string &lab, const std::string &hu,
-                                     juce::PopupMenu &m) const
-{
-    auto tc = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(lab, hu);
-
-    tc->setSkin(currentSkin, bitmapStore);
-    auto ht = tc->getTitle();
-    m.addCustomItem(-1, std::move(tc), nullptr, ht);
-}
-
 void SurgeGUIEditor::effectSettingsBackgroundClick(int whichScene, Surge::Widgets::EffectChooser *c)
 {
     auto fxGridMenu = juce::PopupMenu();
-
-    auto msurl = SurgeGUIEditor::helpURLForSpecial("fx-selector");
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-    addHelpHeaderTo("FX Unit Selector", hurl, fxGridMenu);
-
-    fxGridMenu.addSeparator();
 
     std::string sc = std::string("Scene ") + (char)('A' + whichScene);
 
@@ -4137,32 +4120,6 @@ std::string SurgeGUIEditor::helpURLFor(Parameter *p)
             return r;
     }
     return "";
-}
-
-std::string SurgeGUIEditor::helpURLForSpecial(const string &special)
-{
-    auto storage = &(synth->storage);
-    return helpURLForSpecial(storage, special);
-}
-
-std::string SurgeGUIEditor::helpURLForSpecial(SurgeStorage *storage, const std::string &special)
-{
-    if (storage->helpURL_specials.find(special) != storage->helpURL_specials.end())
-    {
-        auto r = storage->helpURL_specials[special];
-        if (r != "")
-            return r;
-    }
-    return "";
-}
-std::string SurgeGUIEditor::fullyResolvedHelpURL(const string &helpurl)
-{
-    std::string lurl = helpurl;
-    if (helpurl[0] == '#')
-    {
-        lurl = stringManual + helpurl;
-    }
-    return lurl;
 }
 
 void SurgeGUIEditor::setupSkinFromEntry(const Surge::GUI::SkinDB::Entry &entry)

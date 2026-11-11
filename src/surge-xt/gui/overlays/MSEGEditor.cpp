@@ -3692,18 +3692,6 @@ struct MSEGCanvas : public juce::Component, public Surge::GUI::SkinConsumingComp
             t = ms->segmentStart[tts];
         }
 
-        auto msurl =
-            storage ? SurgeGUIEditor::helpURLForSpecial(storage, "mseg-editor") : std::string();
-        auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-        auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("MSEG Segment", hurl);
-        tcomp->setSkin(skin, associatedBitmapStore);
-        auto hment = tcomp->getTitle();
-
-        contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-        contextMenu.addSeparator();
-
         auto typeTo = [this, &contextMenu, t, tts](std::string n, MSEGStorage::segment::Type type) {
             contextMenu.addItem(
                 n, true, (tts >= 0 && this->ms->segments[tts].type == type), [this, t, type]() {
@@ -3737,12 +3725,6 @@ struct MSEGCanvas : public juce::Component, public Surge::GUI::SkinConsumingComp
         }
 
         contextMenu.addColumnBreak();
-
-        auto ecomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("", hurl);
-
-        contextMenu.addCustomItem(-1, std::move(ecomp), nullptr, "");
-
-        contextMenu.addSeparator();
 
         const int detailedMode = Surge::Storage::getValueDisplayPrecision(storage);
 
@@ -4729,17 +4711,6 @@ int32_t MSEGControlRegion::controlModifierClicked(Surge::GUI::IComponentTagValue
     if (!options.empty() || isOnOff)
     {
         auto contextMenu = juce::PopupMenu();
-
-        auto msurl = SurgeGUIEditor::helpURLForSpecial(storage, "mseg-editor");
-        auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-        auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(menuName, hurl);
-
-        tcomp->setSkin(skin, associatedBitmapStore);
-        auto hment = tcomp->getTitle();
-
-        contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-        contextMenu.addSeparator();
 
         if (!isOnOff)
         {

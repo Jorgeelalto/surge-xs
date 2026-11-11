@@ -878,26 +878,6 @@ void PatchSelector::showClassicMenu(bool single_category, bool userOnly)
         populatePatchMenuForCategory(tutorialCat, contextMenu, single_category, main_e, true);
     }
 
-    if (sge)
-    {
-        contextMenu.addSeparator();
-
-        auto hu = sge->helpURLForSpecial("patch-browser");
-        auto lurl = hu;
-
-        if (hu != "")
-        {
-            lurl = sge->fullyResolvedHelpURL(hu);
-        }
-
-        auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Patch Browser", lurl);
-
-        hmen->setSkin(skin, associatedBitmapStore);
-        hmen->setCentered(false);
-        auto hment = hmen->getTitle();
-        contextMenu.addCustomItem(-1, std::move(hmen), nullptr, hment);
-    }
-
     auto o = juce::PopupMenu::Options();
 
     if (sge)

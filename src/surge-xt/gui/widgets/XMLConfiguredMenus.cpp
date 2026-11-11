@@ -527,46 +527,23 @@ void OscillatorMenu::populate()
 {
     XMLMenuPopulator::populate();
 
-    menu.addSeparator();
-
     auto sge = firstListenerOfType<SurgeGUIEditor>();
 
-    if (sge)
+    if (sge && storage->oscReceiving)
     {
-        auto hu = sge->helpURLForSpecial("osc-select");
-        auto lurl = hu;
-
-        if (hu != "")
-        {
-            lurl = sge->fullyResolvedHelpURL(hu);
-        }
-
         auto sc = sge->current_scene;
         auto osc = sge->current_osc[sc];
+        menu.addSeparator();
 
-        std::string title = fmt::format("Osc {} Type", osc + 1);
+        auto oscName = storage->getPatch().scene[sc].osc[osc].type.get_osc_name();
 
-        auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(title, lurl);
-        hmen->setSkin(skin, associatedBitmapStore);
-        hmen->setCentered(false);
+        auto i =
+            juce::PopupMenu::Item(fmt::format("OSC: {}", oscName))
+                .setEnabled(true)
+                .setAction([oscName]() { juce::SystemClipboard::copyTextToClipboard(oscName); })
+                .setColour(sge->currentSkin->getColor(Colors::PopupMenu::Text).withAlpha(0.75f));
 
-        menu.addCustomItem(-1, std::move(hmen), nullptr, title);
-
-        if (storage->oscReceiving)
-        {
-            menu.addSeparator();
-
-            auto oscName = storage->getPatch().scene[sc].osc[osc].type.get_osc_name();
-
-            auto i =
-                juce::PopupMenu::Item(fmt::format("OSC: {}", oscName))
-                    .setEnabled(true)
-                    .setAction([oscName]() { juce::SystemClipboard::copyTextToClipboard(oscName); })
-                    .setColour(
-                        sge->currentSkin->getColor(Colors::PopupMenu::Text).withAlpha(0.75f));
-
-            menu.addItem(i);
-        }
+        menu.addItem(i);
     }
 }
 
@@ -921,8 +898,6 @@ void FxMenu::populateForContext(bool isCalledInEffectChooser)
 
     auto cfx = std::string{"Current FX Slot"};
     auto cfxc = std::string{"Current FX Chain"};
-    auto helpMenuText = std::string{"FX Presets"};
-    auto helpMenuScreeReaderText = helpMenuText;
 
     const auto cur_fx = current_fx;
 
@@ -932,11 +907,7 @@ void FxMenu::populateForContext(bool isCalledInEffectChooser)
         {
             cfx = fxslot_longnames[cfxid];
             cfxc = fxchain_names[fxSlotToChain(cfxid)];
-            helpMenuText = cfx;
         }
-
-        helpMenuScreeReaderText =
-            fmt::format("FX Presets: {} {}", fxslot_longnames[cfxid], fx_type_names[cfxtype]);
     }
 
     menu.addColumnBreak();
@@ -1093,25 +1064,8 @@ void FxMenu::populateForContext(bool isCalledInEffectChooser)
 
     menu.addItem(Surge::GUI::toOSCase("Refresh FX Preset List"), rsA);
 
-    menu.addSeparator();
-
     if (sge)
     {
-        auto hu = sge->helpURLForSpecial("fx-presets");
-        auto lurl = hu;
-
-        if (hu != "")
-        {
-            lurl = sge->fullyResolvedHelpURL(hu);
-        }
-
-        auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(
-            helpMenuText, helpMenuScreeReaderText, lurl);
-        hmen->setSkin(skin, associatedBitmapStore);
-        hmen->setCentered(false);
-
-        menu.addCustomItem(-1, std::move(hmen), nullptr, helpMenuScreeReaderText);
-
         if (storage->oscReceiving)
         {
             menu.addSeparator();

@@ -3898,17 +3898,6 @@ void TuningOverlay::showRotationMenu(int degree)
         return;
 
     auto menu = juce::PopupMenu();
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(
-        SurgeGUIEditor::helpURLForSpecial(storage, "tun-menu"));
-    auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Scale", hurl);
-
-    tcomp->setSkin(skin, associatedBitmapStore);
-
-    auto hment = tcomp->getTitle();
-
-    menu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-    menu.addSeparator();
-
     menu.addItem(Surge::GUI::toOSCase("Invert Scale"), [this]() { onScaleRotated(0, true); });
 
     /*

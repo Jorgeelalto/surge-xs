@@ -924,9 +924,9 @@ class SurgeGUIEditor : public Surge::GUI::IComponentTagValue::Listener,
                                    std::function<void(Modulator::SmoothingMode)> setSmooth);
 
     void makeMpeTimbreMenu(juce::PopupMenu &menu, const bool asSubMenu);
-    juce::PopupMenu makeMpeMenu(const juce::Point<int> &rect, bool showhelp);
-    juce::PopupMenu makeTuningMenu(const juce::Point<int> &rect, bool showhelp);
-    juce::PopupMenu makeZoomMenu(const juce::Point<int> &rect, bool showhelp);
+    juce::PopupMenu makeMpeMenu(const juce::Point<int> &rect);
+    juce::PopupMenu makeTuningMenu(const juce::Point<int> &rect);
+    juce::PopupMenu makeZoomMenu(const juce::Point<int> &rect);
     juce::PopupMenu makeSkinMenu(const juce::Point<int> &rect);
     juce::PopupMenu makeMouseBehaviorMenu(const juce::Point<int> &rect);
     juce::PopupMenu makePatchDefaultsMenu(const juce::Point<int> &rect);
@@ -948,7 +948,6 @@ class SurgeGUIEditor : public Surge::GUI::IComponentTagValue::Listener,
     fs::path juceStringToFSPath(const juce::String &f);
 
   public:
-    void addHelpHeaderTo(const std::string &lab, const std::string &hu, juce::PopupMenu &m) const;
 
   public:
     bool getShowVirtualKeyboard();
@@ -1026,11 +1025,6 @@ class SurgeGUIEditor : public Surge::GUI::IComponentTagValue::Listener,
 
   public:
     std::string helpURLFor(Parameter *p); // this requires internal state so doesn't have statics
-    std::string
-    helpURLForSpecial(const std::string &special); // these can be either this way or static
-
-    static std::string helpURLForSpecial(SurgeStorage *storage, const std::string &special);
-    static std::string fullyResolvedHelpURL(const std::string &helpurl);
 
   private:
     /*

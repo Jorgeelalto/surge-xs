@@ -213,23 +213,6 @@ struct ModulationSideControls : public juce::Component,
             return true;
         case tag_sort_by:
         case tag_value_disp:
-            auto men = juce::PopupMenu();
-            auto st = &(editor->synth->storage);
-            auto msurl = st ? sge->helpURLForSpecial(st, "mod-list") : std::string();
-            auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-            std::string name =
-                (tag == tag_sort_by) ? "Sort Modulation List" : "Modulation List Value Display";
-
-            auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(name, hurl);
-
-            tcomp->setSkin(skin, associatedBitmapStore);
-            tcomp->setCentered(false);
-
-            auto hment = tcomp->getTitle();
-            men.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-            men.showMenuAsync(sge->popupMenuOptions());
-
             return true;
         }
         return true;
@@ -1286,22 +1269,7 @@ void ModulationSideControls::valueChanged(GUI::IComponentTagValue *c)
                 filterW->setTitle("Filter By: None");
                 filterW->setDescription("Filter By: None");
             });
-
-            men.addSeparator();
         }
-
-        auto st = &(editor->synth->storage);
-        auto msurl = st ? sge->helpURLForSpecial(st, "mod-list") : std::string();
-        auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-        auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(
-            "Filter Modulation List", hurl);
-
-        tcomp->setSkin(skin, associatedBitmapStore);
-        tcomp->setCentered(false);
-
-        auto hment = tcomp->getTitle();
-        men.addCustomItem(-1, std::move(tcomp), nullptr, hment);
 
         men.showMenuAsync(sge->popupMenuOptions());
     }
@@ -1368,17 +1336,6 @@ void ModulationSideControls::showAddSourceMenu()
     juce::PopupMenu *popMenu{nullptr};
     auto synth = editor->synth;
     auto sge = editor->ed;
-
-    auto st = &(synth->storage);
-    auto msurl = st ? sge->helpURLForSpecial(st, "mod-list") : std::string();
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-    auto tcomp =
-        std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Add Modulation From", hurl);
-    auto hment = tcomp->getTitle();
-    tcomp->setSkin(skin, associatedBitmapStore);
-    men.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-    men.addSeparator();
 
     for (int sc = 0; sc < n_scenes; ++sc)
     {
@@ -1506,17 +1463,6 @@ void ModulationSideControls::showAddTargetMenu()
     auto synth = editor->synth;
 
     auto men = juce::PopupMenu();
-
-    auto st = &(synth->storage);
-    auto msurl = st ? sge->helpURLForSpecial(st, "mod-list") : std::string();
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-    auto tcomp =
-        std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Add Modulation To", hurl);
-    auto hment = tcomp->getTitle();
-    tcomp->setSkin(skin, associatedBitmapStore);
-    men.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-    men.addSeparator();
 
     std::array<std::map<int, std::map<int, std::vector<std::pair<int, std::string>>>>, n_scenes + 1>
         parsBySceneThenCGThenCGE;

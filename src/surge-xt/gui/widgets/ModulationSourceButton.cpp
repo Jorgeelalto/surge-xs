@@ -381,46 +381,8 @@ void ModulationSourceButton::buildHamburgerMenu(juce::PopupMenu &menu,
                                                 const bool addedToModbuttonContextMenu)
 {
     int idx{0};
-    std::string hu;
     auto modsource = getCurrentModSource();
     auto sge = firstListenerOfType<SurgeGUIEditor>();
-
-    if (modsource >= ms_ctrl1 && modsource <= ms_ctrl8)
-    {
-        hu = sge->helpURLForSpecial("macro-modbutton");
-    }
-    else if (modsource >= ms_lfo1 && modsource <= ms_slfo6)
-    {
-        hu = sge->helpURLForSpecial("lfo-modbutton");
-    }
-    else if ((modsource >= ms_ampeg && modsource <= ms_filtereg) ||
-             (modsource >= ms_random_bipolar && modsource <= ms_alternate_unipolar))
-    {
-        hu = sge->helpURLForSpecial("internalmod-modbutton");
-    }
-    else
-    {
-        hu = sge->helpURLForSpecial("other-modbutton");
-    }
-
-    if (!addedToModbuttonContextMenu)
-    {
-        if (hu != "")
-        {
-            auto lurl = sge->fullyResolvedHelpURL(hu);
-            sge->addHelpHeaderTo(
-                ModulatorName::modulatorName(storage, modsource, false, sge->current_scene), lurl,
-                menu);
-        }
-        else
-        {
-            menu.addItem(
-                ModulatorName::modulatorName(storage, modsource, false, sge->current_scene),
-                []() {});
-        }
-
-        menu.addSeparator();
-    }
 
     if (modlist.size() > 1)
     {
@@ -913,14 +875,7 @@ void ModulationOverviewLaunchButton::mouseDown(const juce::MouseEvent &event)
 {
     if (event.mods.isPopupMenu())
     {
-        juce::PopupMenu contextMenu;
-
-        auto msurl = editor->helpURLForSpecial("mod-list");
-        auto hurl = editor->fullyResolvedHelpURL(msurl);
-
-        editor->addHelpHeaderTo("Modulation List", hurl, contextMenu);
-
-        contextMenu.showMenuAsync(editor->popupMenuOptions(this, false));
+        return;
     }
     else
     {

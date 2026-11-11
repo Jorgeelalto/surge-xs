@@ -436,21 +436,6 @@ void OpenSoundControlSettings::buttonClicked(juce::Button *button)
     if (button == help.get())
     {
         auto menu = juce::PopupMenu();
-        auto hu = editor->helpURLForSpecial("opensound-settings");
-        auto lurl = hu;
-
-        if (lurl != "")
-        {
-            lurl = editor->fullyResolvedHelpURL(hu);
-        }
-
-        auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("OSC Settings", lurl);
-        tcomp->setSkin(skin, associatedBitmapStore);
-        auto hment = tcomp->getTitle();
-
-        menu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-        menu.addSeparator();
 
         menu.addItem(Surge::GUI::toOSCase("Show OSC Specification..."), [this]() {
             if (auto oscSpecRes =

@@ -184,22 +184,6 @@ juce::PopupMenu SurgeGUIEditor::makeLfoMenu(const juce::Point<int> &where)
 
     lfoSubMenu.addItem(Surge::GUI::toOSCase("Refresh Presets"),
                        [this]() { this->synth->storage.modulatorPreset->forcePresetRescan(); });
-    lfoSubMenu.addSeparator();
-
-    auto hu = helpURLForSpecial("lfo-presets");
-    auto lurl = hu;
-
-    if (hu != "")
-    {
-        lurl = fullyResolvedHelpURL(hu);
-    }
-
-    auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("LFO Presets", lurl);
-
-    hmen->setSkin(currentSkin, bitmapStore);
-    hmen->setCentered(false);
-    auto hment = hmen->getTitle();
-    lfoSubMenu.addCustomItem(-1, std::move(hmen), nullptr, hment);
 
     return lfoSubMenu;
 }
@@ -233,18 +217,9 @@ void SurgeGUIEditor::makeMpeTimbreMenu(juce::PopupMenu &menu, const bool asSubMe
     }
 }
 
-juce::PopupMenu SurgeGUIEditor::makeMpeMenu(const juce::Point<int> &where, bool showhelp)
+juce::PopupMenu SurgeGUIEditor::makeMpeMenu(const juce::Point<int> &where)
 {
     auto mpeSubMenu = juce::PopupMenu();
-    auto hu = helpURLForSpecial("mpe-menu");
-
-    if (hu != "" && showhelp)
-    {
-        auto lurl = fullyResolvedHelpURL(hu);
-
-        addHelpHeaderTo("MPE", lurl, mpeSubMenu);
-        mpeSubMenu.addSeparator();
-    }
 
     mpeSubMenu.addItem(fmt::format("{}able MPE", synth->mpeEnabled ? "Dis" : "En"),
                        [this]() { toggleMPE(); });
@@ -345,7 +320,7 @@ juce::PopupMenu SurgeGUIEditor::makeMonoModeOptionsMenu(const juce::Point<int> &
     return monoSubMenu;
 }
 
-juce::PopupMenu SurgeGUIEditor::makeTuningMenu(const juce::Point<int> &where, bool showhelp)
+juce::PopupMenu SurgeGUIEditor::makeTuningMenu(const juce::Point<int> &where)
 {
     bool isTuningEnabled = !synth->storage.isStandardTuning;
     bool isScaleEnabled = !synth->storage.isStandardScale;
@@ -355,16 +330,6 @@ juce::PopupMenu SurgeGUIEditor::makeTuningMenu(const juce::Point<int> &where, bo
                                 this->synth->storage.oddsound_mts_client;
 
     auto tuningSubMenu = juce::PopupMenu();
-    auto hu = helpURLForSpecial("tun-menu");
-
-    if (hu != "" && showhelp)
-    {
-        auto lurl = fullyResolvedHelpURL(hu);
-
-        addHelpHeaderTo(isOddsoundOnAsClient ? "Tuning (MTS-ESP)" : "Tuning", lurl, tuningSubMenu);
-
-        tuningSubMenu.addSeparator();
-    }
 
 #ifndef SURGE_SKIP_ODDSOUND_MTS
     if (isOddsoundOnAsClient)
@@ -769,20 +734,9 @@ juce::PopupMenu SurgeGUIEditor::makeTuningMenu(const juce::Point<int> &where, bo
     return tuningSubMenu;
 }
 
-juce::PopupMenu SurgeGUIEditor::makeZoomMenu(const juce::Point<int> &where, bool showhelp)
+juce::PopupMenu SurgeGUIEditor::makeZoomMenu(const juce::Point<int> &where)
 {
     auto zoomSubMenu = juce::PopupMenu();
-
-    auto hu = helpURLForSpecial("zoom-menu");
-
-    if (hu != "" && showhelp)
-    {
-        auto lurl = fullyResolvedHelpURL(hu);
-
-        addHelpHeaderTo("Zoom", lurl, zoomSubMenu);
-
-        zoomSubMenu.addSeparator();
-    }
 
     bool isFixed = false;
     std::vector<int> zoomTos = {{100, 125, 150, 175, 200, 300, 400}};
@@ -1996,21 +1950,21 @@ juce::PopupMenu SurgeGUIEditor::makeDevMenu(const juce::Point<int> &where)
 void SurgeGUIEditor::showZoomMenu(const juce::Point<int> &where,
                                   Surge::GUI::IComponentTagValue *launchFrom)
 {
-    auto m = makeZoomMenu(where, true);
+    auto m = makeZoomMenu(where);
     m.showMenuAsync(popupMenuOptions(where), Surge::GUI::makeEndHoverCallback(launchFrom));
 }
 
 void SurgeGUIEditor::showMPEMenu(const juce::Point<int> &where,
                                  Surge::GUI::IComponentTagValue *launchFrom)
 {
-    auto m = makeMpeMenu(where, true);
+    auto m = makeMpeMenu(where);
     m.showMenuAsync(popupMenuOptions(where), Surge::GUI::makeEndHoverCallback(launchFrom));
 }
 
 void SurgeGUIEditor::showTuningMenu(const juce::Point<int> &where,
                                     Surge::GUI::IComponentTagValue *launchFrom)
 {
-    auto m = makeTuningMenu(where, true);
+    auto m = makeTuningMenu(where);
 
     m.showMenuAsync(popupMenuOptions(where), Surge::GUI::makeEndHoverCallback(launchFrom));
 }
@@ -2027,7 +1981,7 @@ void SurgeGUIEditor::showSettingsMenu(const juce::Point<int> &where,
 {
     auto settingsMenu = juce::PopupMenu();
 
-    auto zoomMenu = makeZoomMenu(where, false);
+    auto zoomMenu = makeZoomMenu(where);
     settingsMenu.addSubMenu("Zoom", zoomMenu);
 
     auto skinSubMenu = makeSkinMenu(where);
@@ -2055,7 +2009,7 @@ void SurgeGUIEditor::showSettingsMenu(const juce::Point<int> &where,
 
     settingsMenu.addSeparator();
 
-    auto mpeSubMenu = makeMpeMenu(where, false);
+    auto mpeSubMenu = makeMpeMenu(where);
     settingsMenu.addSubMenu(Surge::GUI::toOSCase("MPE Settings"), mpeSubMenu);
 
     auto midiSubMenu = makeMidiMenu(where);
@@ -2064,7 +2018,7 @@ void SurgeGUIEditor::showSettingsMenu(const juce::Point<int> &where,
     auto oscSubMenu = makeOSCMenu(where);
     settingsMenu.addSubMenu(Surge::GUI::toOSCase("OSC Settings"), oscSubMenu);
 
-    auto tuningSubMenu = makeTuningMenu(where, false);
+    auto tuningSubMenu = makeTuningMenu(where);
     settingsMenu.addSubMenu("Tuning", tuningSubMenu);
 
     settingsMenu.addSeparator();

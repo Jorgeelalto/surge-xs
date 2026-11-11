@@ -68,45 +68,6 @@ struct TinyLittleIconButton : public juce::Component
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TinyLittleIconButton);
 };
 
-struct MenuTitleHelpComponent : juce::PopupMenu::CustomComponent, Surge::GUI::SkinConsumingComponent
-{
-    std::string manualAccTag = " (open manual)";
-    MenuTitleHelpComponent(const std::string &l, const std::string &u)
-        : label(l), url(u), juce::PopupMenu::CustomComponent(false)
-    {
-        setTitle(l + manualAccTag);
-        setDescription(l + manualAccTag);
-        setAccessible(true);
-    }
-
-    MenuTitleHelpComponent(const std::string &l, const std::string &accL, const std::string &u)
-        : label(l), url(u), juce::PopupMenu::CustomComponent(false)
-    {
-        setTitle(accL + manualAccTag);
-        setDescription(accL + manualAccTag);
-        setAccessible(true);
-    }
-
-    void getIdealSize(int &idealWidth, int &idealHeight) override;
-
-    void mouseUp(const juce::MouseEvent &e) override;
-    bool keyPressed(const juce::KeyPress &k) override;
-    void paint(juce::Graphics &g) override;
-    void onSkinChanged() override;
-
-    std::string label, url;
-    SurgeImage *icons{nullptr};
-    bool isCentered{true};
-    bool isBoldened{true};
-    void setCentered(bool b) { isCentered = b; }
-    void setBoldened(bool b) { isBoldened = b; }
-    void launchHelp();
-
-    std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MenuTitleHelpComponent);
-};
-
 struct MenuCenteredBoldLabel : juce::PopupMenu::CustomComponent
 {
     MenuCenteredBoldLabel(const std::string &s) : label(s), juce::PopupMenu::CustomComponent(false)

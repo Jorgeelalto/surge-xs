@@ -716,39 +716,14 @@ int32_t Oscilloscope::controlModifierClicked(Surge::GUI::IComponentTagValue *pCo
 
     // Basically all the menus are a list of options with values
     std::vector<std::pair<std::string, float>> options;
-    std::string menuName = "";
 
     switch (tag)
     {
     case tag_scope_mode:
-        menuName = "Oscilloscope Mode";
         options.push_back(std::make_pair("Waveform", 0));
         options.push_back(std::make_pair("Spectrum", 1));
         break;
-    case tag_input_l:
-        menuName = "Left Input";
-        break;
-    case tag_input_r:
-        menuName = "Right Input";
-        break;
-    case tag_wf_dc_block:
-        menuName = "DC Block";
-        break;
-    case tag_wf_freeze:
-    case tag_sp_freeze:
-        menuName = "Freeze";
-        break;
-    case tag_wf_sync:
-        menuName = "Sync Redraw";
-        break;
-    case tag_wf_time_scaling:
-        menuName = "Time Scaling";
-        break;
-    case tag_wf_amp_scaling:
-        menuName = "Amplitude Scaling";
-        break;
     case tag_wf_trigger_mode:
-        menuName = "Trigger Mode";
         options.push_back(std::make_pair("Freerun", 0.0));
         options.push_back(std::make_pair("Rising Edge", 0.25));
         options.push_back(std::make_pair("Falling Edge", 0.5));
@@ -756,51 +731,17 @@ int32_t Oscilloscope::controlModifierClicked(Surge::GUI::IComponentTagValue *pCo
         options.push_back(std::make_pair("Keytrack", 1.0));
         break;
     case tag_wf_keytrack_source:
-        menuName = "Note Priority";
         options.push_back(std::make_pair("Lowest", 0.0));
         options.push_back(std::make_pair("Highest", 0.5));
         options.push_back(std::make_pair("Latest", 1.0));
-        break;
-    case tag_wf_keytrack_cycles:
-        menuName = "Cycles";
-        break;
-    case tag_wf_trigger_level:
-        menuName = "Trigger Level";
-        break;
-    case tag_wf_retrigger_threshold:
-        menuName = "Retrigger Threshold";
-        break;
-    case tag_wf_int_trigger_freq:
-        menuName = "Trigger Frequency";
-        break;
-    case tag_sp_min_level:
-        menuName = "Minimum Level";
-        break;
-    case tag_sp_max_level:
-        menuName = "Maximum Level";
-        break;
-    case tag_sp_decay_rate:
-        menuName = "Spectrum Decay Rate";
         break;
     default:
         break;
     }
 
-    auto contextMenu = juce::PopupMenu();
-
-    auto msurl = SurgeGUIEditor::helpURLForSpecial(storage_, "oscilloscope");
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-    auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(menuName, hurl);
-
-    tcomp->setSkin(skin, associatedBitmapStore);
-
-    auto hment = tcomp->getTitle();
-
-    contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
     if (!options.empty())
     {
-        contextMenu.addSeparator();
+        auto contextMenu = juce::PopupMenu();
 
         for (auto op : options)
         {
@@ -830,10 +771,9 @@ int32_t Oscilloscope::controlModifierClicked(Surge::GUI::IComponentTagValue *pCo
                     }
                 });
         }
+        contextMenu.showMenuAsync(editor_->popupMenuOptions(),
+                                  Surge::GUI::makeEndHoverCallback(pControl));
     }
-
-    contextMenu.showMenuAsync(editor_->popupMenuOptions(),
-                              Surge::GUI::makeEndHoverCallback(pControl));
 
     return 1;
 }

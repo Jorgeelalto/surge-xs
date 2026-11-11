@@ -624,36 +624,18 @@ void OscillatorWaveformDisplay::createWTMenu(const bool useComponentBounds = tru
     {
         auto contextMenu = juce::PopupMenu();
 
-        createWTMenuItems(contextMenu, true, true);
+        createWTMenuItems(contextMenu, true);
 
         contextMenu.showMenuAsync(sge->popupMenuOptions(useComponentBounds ? this : nullptr));
     }
 }
 
-void OscillatorWaveformDisplay::createWTMenuItems(juce::PopupMenu &contextMenu, bool centered,
-                                                  bool add2D3Dswitch)
+void OscillatorWaveformDisplay::createWTMenuItems(juce::PopupMenu &contextMenu, bool add2D3Dswitch)
 {
     if (sge)
     {
-        auto hu = sge->helpURLForSpecial("wavetables");
-
-        if (hu != "")
-        {
-            auto lurl = sge->fullyResolvedHelpURL(hu);
-            auto tc = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Wavetables", lurl);
-
-            tc->setSkin(skin, associatedBitmapStore);
-            tc->setCentered(centered);
-
-            auto hment = tc->getTitle();
-
-            contextMenu.addCustomItem(-1, std::move(tc), nullptr, hment);
-        }
-
         if (add2D3Dswitch)
         {
-            contextMenu.addSeparator();
-
             auto action = [this]() {
                 toggleCustomEditor();
 
@@ -897,27 +879,9 @@ void OscillatorWaveformDisplay::refreshWavetablesMenu(juce::PopupMenu &contextMe
     contextMenu.addItem(Surge::GUI::toOSCase("Refresh Wavetable List"), refresh);
 }
 
-void OscillatorWaveformDisplay::createAliasOptionsMenu(const bool useComponentBounds,
-                                                       const bool onlyHelpEntry)
+void OscillatorWaveformDisplay::createAliasOptionsMenu(const bool useComponentBounds)
 {
     auto contextMenu = juce::PopupMenu();
-
-    {
-        auto msurl = SurgeGUIEditor::helpURLForSpecial(storage, "alias-shape");
-        auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-        auto tc = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(
-            fmt::format("Alias Additive Editor{}", onlyHelpEntry ? "" : " Options"), hurl);
-
-        auto hment = tc->getTitle();
-
-        tc->setSkin(skin, associatedBitmapStore);
-
-        contextMenu.addCustomItem(-1, std::move(tc), nullptr, hment);
-
-        contextMenu.addSeparator();
-    }
-
-    if (!onlyHelpEntry)
     {
         constexpr int num_partials = AliasOscillator::n_additive_partials;
 
@@ -1575,12 +1539,6 @@ void OscillatorWaveformDisplay::mouseDown(const juce::MouseEvent &event)
         {
             // internally already queries if we're using a wavetable-based osc
             createWTMenu(false);
-
-            // we're using Alias now. TODO: this can probably be better/clearer
-            if (!usesWT)
-            {
-                createAliasOptionsMenu(false, true);
-            }
 
             return;
         }
@@ -2572,16 +2530,8 @@ bool OscillatorWaveformDisplay::keyPressed(const juce::KeyPress &key)
         }
         else
         {
-            bool usesWT = uses_wavetabledata(oscdata->type.val.i);
-
             // internally already queries if we're using a wavetable-based osc
             createWTMenu();
-
-            // we're using Alias now. TODO: this can probably be better/clearer
-            if (!usesWT)
-            {
-                createAliasOptionsMenu(false, true);
-            }
 
             return true;
         }

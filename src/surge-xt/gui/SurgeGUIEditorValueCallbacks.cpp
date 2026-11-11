@@ -621,61 +621,16 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
         }
     }
 
-    // In these cases just move along with success. RMB does nothing on these switches
-    if (tag == tag_mp_jogwaveshape || tag == tag_mp_jogfx || tag == tag_mp_category ||
-        tag == tag_mp_patch || tag == tag_store || tag == tag_action_undo ||
-        tag == tag_action_redo || tag == tag_main_vu_meter)
+    if (tag == tag_mp_jogfx || tag == tag_mp_category || tag == tag_mp_patch ||
+        tag == tag_mp_jogwaveshape || tag == tag_store)
+        return 1;
+
+    if (tag == tag_action_undo || tag == tag_action_redo || tag == tag_main_vu_meter)
     {
         juce::PopupMenu contextMenu;
-        std::string hu, txt;
-
-        switch (tag)
-        {
-        case tag_mp_patch:
-            hu = helpURLForSpecial("patch-navigation");
-            txt = "Patch Navigation";
-            break;
-        case tag_mp_category:
-            hu = helpURLForSpecial("patch-navigation");
-            txt = "Category Navigation";
-            break;
-        case tag_mp_jogfx:
-            hu = helpURLForSpecial("fx-presets");
-            txt = "FX Preset Navigation";
-            break;
-        case tag_mp_jogwaveshape:
-            hu = helpURLForSpecial("waveshaper");
-            txt = "Waveshaper Navigation";
-            break;
-        case tag_action_undo:
-        case tag_action_redo:
-            hu = helpURLForSpecial("action-history");
-            txt = "Action History";
-            break;
-        case tag_store:
-            hu = helpURLForSpecial("save-dialog");
-            txt = "Patch Save";
-            break;
-        case tag_main_vu_meter:
-            hu = helpURLForSpecial("level-meter");
-            txt = "Level Meter";
-            break;
-        default:
-            break;
-        }
-
-        auto tcomp =
-            std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(txt, fullyResolvedHelpURL(hu));
-        tcomp->setSkin(currentSkin, bitmapStore);
-
-        auto hment = tcomp->getTitle();
-
-        contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
 
         if (tag == tag_main_vu_meter)
         {
-            contextMenu.addSeparator();
-
             makeScopeEntry(contextMenu);
 
             bool cpumeter = Surge::Storage::getUserDefaultValue(
@@ -694,11 +649,6 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
         {
             auto undoStack = undoManager()->textStack(Surge::GUI::UndoManager::UNDO);
             auto redoStack = undoManager()->textStack(Surge::GUI::UndoManager::REDO);
-
-            if (!redoStack.empty() || !undoStack.empty())
-            {
-                contextMenu.addSeparator();
-            }
 
             if (!redoStack.empty())
             {
@@ -740,8 +690,9 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
         }
 #endif
 
-        contextMenu.showMenuAsync(popupMenuOptions(control->asJuceComponent(), false),
-                                  Surge::GUI::makeEndHoverCallback(control));
+        if (contextMenu.getNumItems() > 0)
+            contextMenu.showMenuAsync(popupMenuOptions(control->asJuceComponent(), false),
+                                      Surge::GUI::makeEndHoverCallback(control));
 
         return 1;
     }
@@ -804,20 +755,6 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
             std::string oscname = "Osc " + std::to_string(a + 1);
 
             auto contextMenu = juce::PopupMenu();
-            auto hu = helpURLForSpecial("osc-select");
-            char txt[TXT_SIZE];
-
-            auto lurl = hu;
-            if (lurl != "")
-                lurl = fullyResolvedHelpURL(hu);
-            auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(
-                fmt::format("Osc {:d}", a + 1), lurl);
-            tcomp->setSkin(currentSkin, bitmapStore);
-            auto hment = tcomp->getTitle();
-
-            contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-            contextMenu.addSeparator();
 
             contextMenu.addItem(Surge::GUI::toOSCase("Copy from ") + oscname, [this, a]() {
                 synth->storage.clipboard_copy(cp_osc, current_scene, a);
@@ -854,22 +791,6 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
         if (tag == tag_scene_select)
         {
             auto contextMenu = juce::PopupMenu();
-            auto hu = helpURLForSpecial("scene-select");
-            auto lurl = hu;
-
-            if (lurl != "")
-            {
-                lurl = fullyResolvedHelpURL(hu);
-            }
-
-            auto tcomp = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(
-                fmt::format("Scene {:c}", 'A' + current_scene), lurl);
-            tcomp->setSkin(currentSkin, bitmapStore);
-            auto hment = tcomp->getTitle();
-
-            contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-            contextMenu.addSeparator();
 
             contextMenu.addItem(Surge::GUI::toOSCase("Copy Scene"), [this]() {
                 synth->storage.clipboard_copy(cp_scene, current_scene, -1);
@@ -904,68 +825,11 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
 
     if (tag == tag_mseg_edit)
     {
-        if (lfoDisplay->isMSEG() || lfoDisplay->isFormula())
-        {
-            std::string olname = lfoDisplay->isMSEG() ? "MSEG Editor" : "Formula Editor";
-            std::string helpname = lfoDisplay->isMSEG() ? "mseg-editor" : "formula-editor";
-
-            auto msurl = SurgeGUIEditor::helpURLForSpecial(&(synth->storage), helpname);
-            auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-            auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(olname, hurl);
-            hmen->setSkin(currentSkin, bitmapStore);
-            auto hment = hmen->getTitle();
-
-            auto contextMenu = juce::PopupMenu();
-            contextMenu.addCustomItem(-1, std::move(hmen), nullptr, hment);
-            contextMenu.showMenuAsync(popupMenuOptions(control->asJuceComponent(), false),
-                                      Surge::GUI::makeEndHoverCallback(control));
-        }
-    }
-
-    if (tag == tag_analyzewaveshape)
-    {
-        auto contextMenu = juce::PopupMenu();
-        auto hu = helpURLForSpecial("waveshaper-analysis");
-        auto lurl = hu;
-
-        if (lurl != "")
-            lurl = fullyResolvedHelpURL(hu);
-
-        auto tcomp =
-            std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Waveshaper Analysis", lurl);
-        auto hment = tcomp->getTitle();
-
-        tcomp->setSkin(currentSkin, bitmapStore);
-        contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-        contextMenu.showMenuAsync(popupMenuOptions(control->asJuceComponent(), false),
-                                  Surge::GUI::makeEndHoverCallback(control));
-
         return 1;
     }
 
-    if (tag == tag_analyzefilters)
-    {
-        auto contextMenu = juce::PopupMenu();
-        auto hu = helpURLForSpecial("filter-analysis");
-        auto lurl = hu;
-
-        if (lurl != "")
-            lurl = fullyResolvedHelpURL(hu);
-
-        auto tcomp =
-            std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Filter Analysis", lurl);
-        auto hment = tcomp->getTitle();
-
-        tcomp->setSkin(currentSkin, bitmapStore);
-        contextMenu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-        contextMenu.showMenuAsync(popupMenuOptions(control->asJuceComponent(), false),
-                                  Surge::GUI::makeEndHoverCallback(control));
-
+    if (tag == tag_analyzewaveshape || tag == tag_analyzefilters)
         return 1;
-    }
 
     if ((tag >= tag_mod_source0) && (tag < tag_mod_source_end))
     {
@@ -975,44 +839,6 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
         if (button.isPopupMenu())
         {
             juce::PopupMenu contextMenu;
-            std::string hu;
-
-            if (modsource >= ms_ctrl1 && modsource <= ms_ctrl8)
-            {
-                hu = helpURLForSpecial("macro-modbutton");
-            }
-            else if (modsource >= ms_lfo1 && modsource <= ms_slfo6)
-            {
-                hu = helpURLForSpecial("lfo-modbutton");
-            }
-            else if ((modsource >= ms_ampeg && modsource <= ms_filtereg) ||
-                     (modsource >= ms_random_bipolar && modsource <= ms_alternate_unipolar))
-            {
-                hu = helpURLForSpecial("internalmod-modbutton");
-            }
-            else
-            {
-                hu = helpURLForSpecial("other-modbutton");
-            }
-
-            auto lurl = hu;
-
-            if (lurl != "")
-            {
-                lurl = fullyResolvedHelpURL(lurl);
-            }
-
-            auto hmen = std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(
-                ModulatorName::modulatorNameWithIndex(&synth->storage, current_scene, modsource,
-                                                      modsource_index, false, false),
-                lurl);
-            hmen->setSkin(currentSkin, bitmapStore);
-
-            auto hment = hmen->getTitle();
-
-            contextMenu.addCustomItem(-1, std::move(hmen), nullptr, hment);
-
-            contextMenu.addSeparator();
 
             if (modsource == ms_timbre && synth->mpeEnabled)
             {
@@ -1564,18 +1390,6 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
             juce::Point<int> menuRect{};
 
             auto contextMenu = juce::PopupMenu();
-            std::string helpurl = helpURLFor(p);
-
-            auto lurl = helpurl;
-            if (lurl != "")
-                lurl = fullyResolvedHelpURL(helpurl);
-            auto hmen =
-                std::make_unique<Surge::Widgets::MenuTitleHelpComponent>(p->get_full_name(), lurl);
-            auto hment = hmen->getTitle();
-            hmen->setSkin(currentSkin, bitmapStore);
-            contextMenu.addCustomItem(-1, std::move(hmen), nullptr, hment);
-
-            contextMenu.addSeparator();
 
             std::string txt, txt2;
 

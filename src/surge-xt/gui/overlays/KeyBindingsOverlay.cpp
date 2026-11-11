@@ -349,19 +349,6 @@ void KeyBindingsOverlay::createVKBLayoutMenu()
 {
     auto menu = juce::PopupMenu();
     auto storage = editor->getStorage();
-    auto msurl = storage ? editor->helpURLForSpecial(storage, "virtual-keyboard") : std::string();
-    auto hurl = SurgeGUIEditor::fullyResolvedHelpURL(msurl);
-
-    auto tcomp =
-        std::make_unique<Surge::Widgets::MenuTitleHelpComponent>("Virtual Keyboard Layout", hurl);
-
-    tcomp->setSkin(skin, associatedBitmapStore);
-    tcomp->setCentered(false);
-
-    auto hment = tcomp->getTitle();
-    menu.addCustomItem(-1, std::move(tcomp), nullptr, hment);
-
-    menu.addSeparator();
 
     std::string curVKBLayout = Surge::Storage::getUserDefaultValue(
         storage, Surge::Storage::VirtualKeyboardLayout, "QWERTY");
