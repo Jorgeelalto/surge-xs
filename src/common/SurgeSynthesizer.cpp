@@ -3128,11 +3128,7 @@ bool SurgeSynthesizer::setParameter01(long index, float value, bool external, bo
             {
                 auto subp = storage.getPatch().param_ptr[index];
                 auto filterType = storage.getPatch().param_ptr[index - 1]->val.i;
-                auto maxIVal = sst::filters::fut_subcount[filterType];
-                if (filterType == sst::filters::FilterType::fut_cytomic_svf)
-                {
-                    maxIVal = sst::filters::FilterSubType::st_cytomic_allpass + 1;
-                }
+                auto maxIVal = filterSubtypeCount(filterType);
                 if (maxIVal == 0)
                     subp->val.i = 0;
                 else

@@ -1782,15 +1782,6 @@ Parameter *SurgePatch::parameterFromOSCName(std::string oscName)
     return nullptr;
 }
 
-float convert_v11_reso_to_v12_2P(float reso)
-{
-    float Qinv =
-        (1.0f - 0.99f * limit_range((float)(1.f - (1.f - reso) * (1.f - reso)), 0.0f, 1.0f));
-    return 1.f - sqrt(1.f - ((1.0f - Qinv) / 1.05f));
-}
-
-float convert_v11_reso_to_v12_4P(float reso) { return reso * (0.99f / 1.05f); }
-
 void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
 {
     TiXmlDocument doc;
@@ -2510,45 +2501,6 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
         }
     }
 
-    if (revision < 3)
-    {
-        for (auto &sc : scene)
-        {
-            for (auto &u : sc.filterunit)
-            {
-                switch (u.type.val.i)
-                {
-                case sst::filters::FilterType::fut_lpmoog:
-                    u.subtype.val.i = 3;
-                    break;
-                case fut_14_comb:
-                    u.subtype.val.i = 1;
-                    break;
-                case sst::filters::FilterType::fut_SNH: // SNH replaced comb_neg in rev 4
-                    u.type.val.i = fut_14_comb;
-                    u.subtype.val.i = 3;
-                    break;
-                }
-            }
-        }
-    }
-
-    if (revision == 3)
-    {
-        for (auto &sc : scene)
-        {
-            for (auto &u : sc.filterunit)
-            {
-                // misc replaced comb_neg in rev 4
-                if (u.type.val.i == sst::filters::FilterType::fut_SNH)
-                {
-                    u.type.val.i = fut_14_comb;
-                    u.subtype.val.i += 2;
-                }
-            }
-        }
-    }
-
     if (revision < 5)
     {
         for (auto &sc : scene)
@@ -2561,53 +2513,10 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
         }
     }
 
-    if (revision < 6) // adjust resonance of older patches to match new range
-    {
-        using sst::filters::FilterType;
-
-        for (auto &sc : scene)
-        {
-            for (auto &u : sc.filterunit)
-            {
-                if ((u.type.val.i == FilterType::fut_lp12) ||
-                    (u.type.val.i == FilterType::fut_hp12) ||
-                    (u.type.val.i == FilterType::fut_bp12))
-                {
-                    u.resonance.val.f = convert_v11_reso_to_v12_2P(u.resonance.val.f);
-                }
-                else if ((u.type.val.i == FilterType::fut_lp24) ||
-                         (u.type.val.i == FilterType::fut_hp24))
-                {
-                    u.resonance.val.f = convert_v11_reso_to_v12_4P(u.resonance.val.f);
-                }
-            }
-        }
-    }
-
     if (revision < 8)
     {
-        using sst::filters::FilterType, sst::filters::FilterSubType;
-
         for (auto &sc : scene)
         {
-            // set lp/hp filters to subtype 1
-            for (auto &u : sc.filterunit)
-            {
-                if ((u.type.val.i == FilterType::fut_lp12) ||
-                    (u.type.val.i == FilterType::fut_hp12) ||
-                    (u.type.val.i == FilterType::fut_bp12) ||
-                    (u.type.val.i == FilterType::fut_lp24) ||
-                    (u.type.val.i == FilterType::fut_hp24))
-                {
-                    u.subtype.val.i =
-                        (revision < 6) ? FilterSubType::st_Standard : FilterSubType::st_Driven;
-                }
-                else if (u.type.val.i == FilterType::fut_notch12)
-                {
-                    u.subtype.val.i = 1;
-                }
-            }
-
             // convert pan2 to width
             if (sc.filterblock_configuration.val.i == fc_stereo)
             {
@@ -2635,100 +2544,6 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
         {
             // Older patches use Legacy mode
             sc.monoVoicePriorityMode = NOTE_ON_LATEST_RETRIGGER_HIGHEST;
-
-            // The Great Filter Remap, GitHub issue #3006
-            for (int u = 0; u < n_filterunits_per_scene; u++)
-            {
-                auto *fu = &(sc.filterunit[u]);
-                const auto futy = (fu_type_sv14)(fu->type.val.i);
-                auto subtype = fu->subtype.val.i;
-
-                using sst::filters::FilterType;
-                switch (futy)
-                {
-                case fut_14_none:
-                case fut_14_lp12:
-                case fut_14_lp24:
-                case fut_14_lpmoog:
-                case fut_14_hp12:
-                case fut_14_hp24:
-                case fut_14_SNH:
-                case fut_14_vintageladder:
-                case fut_14_obxd_4pole:
-                case fut_14_k35_lp:
-                case fut_14_k35_hp:
-                case fut_14_diode:
-                case fut_14_cutoffwarp_lp:
-                case fut_14_cutoffwarp_hp:
-                case fut_14_cutoffwarp_n:
-                case fut_14_cutoffwarp_bp:
-                case n_fu_14_types:
-                    // These types were unchanged
-                    break;
-                case fut_14_obxd_2pole:
-                {
-                    int newtype = subtype % 4;
-                    int newsub = (subtype < 4 ? 0 : 1);
-
-                    fu->subtype.val.i = newsub;
-
-                    switch (newtype)
-                    {
-                    case 0:
-                        fu->type.val.i = FilterType::fut_obxd_2pole_lp;
-                        break;
-                    case 1:
-                        fu->type.val.i = FilterType::fut_obxd_2pole_bp;
-                        break;
-                    case 2:
-                        fu->type.val.i = FilterType::fut_obxd_2pole_hp;
-                        break;
-                    case 3:
-                        fu->type.val.i = FilterType::fut_obxd_2pole_n;
-                        break;
-                    }
-                    break;
-                }
-                case fut_14_bp12:
-                    if (subtype < 3)
-                    {
-                        fu->type.val.i = FilterType::fut_bp12;
-                        fu->subtype.val.i = subtype;
-                    }
-                    else if (subtype >= 3 && subtype < 6)
-                    {
-                        fu->type.val.i = FilterType::fut_bp24;
-                        fu->subtype.val.i = subtype - 3;
-                    }
-                    break;
-                case fut_14_notch12:
-                    if (subtype < 2)
-                    {
-                        fu->type.val.i = FilterType::fut_notch12;
-                        fu->subtype.val.i = subtype;
-                    }
-                    else if (subtype >= 2 && subtype < 4)
-                    {
-                        fu->type.val.i = FilterType::fut_notch24;
-                        fu->subtype.val.i = subtype - 2;
-                    }
-
-                    break;
-                case fut_14_comb:
-                    // subtypes 1 and 2 become positive, subtypes 3 and 4 become negative
-                    if (subtype == 0 || subtype == 1)
-                    {
-                        fu->type.val.i = FilterType::fut_comb_pos;
-                        fu->subtype.val.i = subtype;
-                    }
-                    else if (subtype == 2 || subtype == 3)
-                    {
-                        fu->type.val.i = FilterType::fut_comb_neg;
-                        fu->subtype.val.i = subtype - 2;
-                    }
-                    break;
-                }
-            }
         }
     }
 
@@ -2791,31 +2606,6 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
                 {
                     lfo.magnitude.val.f *= 2.f;
                     lfo.magnitude.val.f -= 1.f;
-                }
-            }
-        }
-    }
-
-    if (revision <= 26)
-    {
-        for (auto &sc : scene)
-        {
-            for (auto &u : sc.filterunit)
-            {
-                if (u.type.val.i == sst::filters::FilterType::fut_obxd_4pole &&
-                    u.subtype.val.i == sst::filters::FilterSubType::st_obxd4pole_24dB)
-                {
-                    u.subtype.val.i = sst::filters::FilterSubType::st_obxd4pole_broken24dB;
-                }
-                if (u.type.val.i == sst::filters::FilterType::fut_bp12 &&
-                    u.subtype.val.i == sst::filters::FilterSubType::st_Clean)
-                {
-                    u.subtype.val.i = sst::filters::FilterSubType::st_bp12_LegacyClean;
-                }
-                if (u.type.val.i == sst::filters::FilterType::fut_bp12 &&
-                    u.subtype.val.i == sst::filters::FilterSubType::st_Driven)
-                {
-                    u.subtype.val.i = sst::filters::FilterSubType::st_bp12_LegacyDriven;
                 }
             }
         }
@@ -2897,7 +2687,7 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
         {
             sc.filterunit[u].subtype.val.i =
                 limit_range(sc.filterunit[u].subtype.val.i, 0,
-                            max(0, sst::filters::fut_subcount[sc.filterunit[u].type.val.i] - 1));
+                            max(0, filterSubtypeCount(sc.filterunit[u].type.val.i) - 1));
             sc.filterunit[u].type.set_user_data(&patchFilterSelectorMapper);
         }
 

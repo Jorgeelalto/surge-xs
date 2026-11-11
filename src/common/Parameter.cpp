@@ -3909,85 +3909,28 @@ std::string Parameter::get_display(bool external, float ef) const
                         int type = limit_range(patch.scene[scene].filterunit[unit].type.val.i, 0,
                                                (int)sst::filters::num_filter_types - 1);
                         const auto fType = (FilterType)type;
-                        if (i < 0 || i >= sst::filters::fut_subcount[type])
+                        if (i < 0 || i >= filterSubtypeCount(type))
                         {
                             txt = "None";
                         }
                         else
                             switch (fType)
                             {
-                            case FilterType::fut_lpmoog:
                             case FilterType::fut_diode:
                                 txt = sst::filters::fut_ldr_subtypes[i];
                                 break;
-                            case FilterType::fut_notch12:
-                            case FilterType::fut_notch24:
-                            case FilterType::fut_apf:
-                                txt = sst::filters::fut_notch_subtypes[i];
-                                break;
-                            case FilterType::fut_comb_pos:
-                            case FilterType::fut_comb_neg:
-                                txt = sst::filters::fut_comb_subtypes[i];
-                                break;
-                            case FilterType::fut_vintageladder:
-                                txt = sst::filters::fut_vintageladder_subtypes[i];
-                                break;
                             case FilterType::fut_obxd_2pole_lp:
-                            case FilterType::fut_obxd_2pole_hp:
-                            case FilterType::fut_obxd_2pole_n:
-                            case FilterType::fut_obxd_2pole_bp:
                                 txt = sst::filters::fut_obxd_2p_subtypes[i];
                                 break;
-                            case FilterType::fut_obxd_4pole:
-                                txt = sst::filters::fut_obxd_4p_subtypes[i];
-                                break;
                             case FilterType::fut_k35_lp:
-                            case FilterType::fut_k35_hp:
                                 txt = sst::filters::fut_k35_subtypes[i];
                                 break;
-                            case FilterType::fut_cutoffwarp_lp:
-                            case FilterType::fut_cutoffwarp_hp:
-                            case FilterType::fut_cutoffwarp_n:
-                            case FilterType::fut_cutoffwarp_bp:
-                            case FilterType::fut_cutoffwarp_ap:
-                            case FilterType::fut_resonancewarp_lp:
-                            case FilterType::fut_resonancewarp_hp:
-                            case FilterType::fut_resonancewarp_n:
-                            case FilterType::fut_resonancewarp_bp:
-                            case FilterType::fut_resonancewarp_ap:
-                                // "i & 3" selects the lower two bits that represent the stage count
-                                // "(i >> 2) & 3" selects the next two bits that represent the
-                                // saturator
-                                txt =
-                                    fmt::format("{:s} {:s}", sst::filters::fut_nlf_subtypes[i & 3],
-                                                sst::filters::fut_nlf_saturators[(i >> 2) & 3]);
-                                break;
-                            // don't default any more so compiler catches new ones we add
-                            case FilterType::fut_none:
-                            case FilterType::fut_lp12:
-                            case FilterType::fut_lp24:
-                            case FilterType::fut_bp24:
-                            case FilterType::fut_hp12:
+                            case FilterType::fut_bp12:
                             case FilterType::fut_hp24:
-                            case FilterType::fut_SNH:
                                 txt = sst::filters::fut_def_subtypes[i];
                                 break;
-                            case FilterType::fut_bp12:
-                                txt = sst::filters::fut_bp12_subtypes[i];
-                                break;
-                            case FilterType::fut_tripole:
-                                // "i & 3" selects the lower two bits that represent the filter mode
-                                // "(i >> 2) & 3" selects the next two bits that represent the
-                                // output stage
-                                txt = fmt::format(
-                                    "{:s}, {:s}", sst::filters::fut_tripole_subtypes[i & 3],
-                                    sst::filters::fut_tripole_output_stage[(i >> 2) & 3]);
-                                break;
-                            case FilterType::fut_cytomic_svf:
-                                return sst::filters::fut_cytomic_subtypes[i];
-                            case FilterType::fut_obxd_xpander:
-                                return sst::filters::fut_obxd_xpander_subtypes[i];
                             case FilterType::num_filter_types:
+                            default:
                                 txt = "ERROR";
                                 break;
                             }

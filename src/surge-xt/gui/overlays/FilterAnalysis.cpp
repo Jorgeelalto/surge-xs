@@ -180,7 +180,7 @@ void FilterAnalysis::paint(juce::Graphics &g)
         snm[i] = sc.filterunit[i].subtype.get_display();
         label[i] = fmt::format("{}", nm[i]);
 
-        if (sst::filters::fut_subcount[fs.type.val.i] > 0)
+        if (filterSubtypeCount(fs.type.val.i) > 0)
         {
             label[i] = fmt::format("{} ({})", nm[i], snm[i]);
         }

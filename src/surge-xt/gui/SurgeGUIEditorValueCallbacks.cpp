@@ -1546,14 +1546,12 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
         auto f1type = synth->storage.getPatch().scene[current_scene].filterunit[0].type.val.i;
         auto f2type = synth->storage.getPatch().scene[current_scene].filterunit[1].type.val.i;
 
-        if (tag == f1subtypetag &&
-            (f1type == sst::filters::fut_none || f1type == sst::filters::fut_SNH))
+        if (tag == f1subtypetag && f1type == sst::filters::fut_none)
         {
             return 1;
         }
 
-        if (tag == f2subtypetag &&
-            (f2type == sst::filters::fut_none || f2type == sst::filters::fut_SNH))
+        if (tag == f2subtypetag && f2type == sst::filters::fut_none)
         {
             return 1;
         }
@@ -1773,29 +1771,13 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
                     // var and modify its value when required
                     int max = p->val_max.i;
 
-                    // currently we only have this case with filter subtypes - different filter
-                    // types have a different number of them so let's do this!
-                    bool isCombOnSubtype = false;
-
                     if (p->ctrltype == ct_filtersubtype)
                     {
                         auto ftype = synth->storage.getPatch()
                                          .scene[current_scene]
                                          .filterunit[p->ctrlgroup_entry]
                                          .type.val.i;
-
-                        if (ftype == sst::filters::fut_comb_pos ||
-                            ftype == sst::filters::fut_comb_neg)
-                        {
-                            isCombOnSubtype = true;
-                        }
-
-                        max = sst::filters::fut_subcount[ftype] - 1;
-
-                        if (ftype == sst::filters::FilterType::fut_cytomic_svf)
-                        {
-                            max = sst::filters::FilterSubType::st_cytomic_allpass;
-                        }
+                        max = filterSubtypeCount(ftype) - 1;
                     }
 
                     auto dm = dynamic_cast<ParameterDiscreteIndexRemapper *>(p->user_data);
@@ -1950,20 +1932,6 @@ int32_t SurgeGUIEditor::controlModifierClicked(Surge::GUI::IComponentTagValue *c
                                     }
                                     broadcastPluginAutomationChangeFor(p);
                                     synth->refresh_editor = true;
-                                });
-                        }
-
-                        if (isCombOnSubtype)
-                        {
-                            contextMenu.addSeparator();
-
-                            bool isChecked = synth->storage.getPatch().correctlyTuneCombFilter;
-
-                            contextMenu.addItem(
-                                Surge::GUI::toOSCase("Precise Tuning"), true, isChecked, [this]() {
-                                    synth->storage.getPatch().correctlyTuneCombFilter =
-                                        !synth->storage.getPatch().correctlyTuneCombFilter;
-                                    synth->storage.getPatch().isDirty = true;
                                 });
                         }
 
@@ -4031,13 +3999,8 @@ void SurgeGUIEditor::valueChanged(Surge::GUI::IComponentTagValue *control)
         int a =
             synth->storage.getPatch().scene[current_scene].filterunit[idx].subtype.val.i + valdir;
         int t = synth->storage.getPatch().scene[current_scene].filterunit[idx].type.val.i;
-        int nn = sst::filters::fut_subcount
-            [synth->storage.getPatch().scene[current_scene].filterunit[idx].type.val.i];
-        if (synth->storage.getPatch().scene[current_scene].filterunit[idx].type.val.i ==
-            sst::filters::FilterType::fut_cytomic_svf)
-        {
-            nn = sst::filters::FilterSubType::st_cytomic_allpass + 1;
-        }
+        int nn = filterSubtypeCount(
+            synth->storage.getPatch().scene[current_scene].filterunit[idx].type.val.i);
         if (a >= nn)
             a = 0;
         if (a < 0)
@@ -4510,7 +4473,7 @@ void SurgeGUIEditor::valueChanged(Surge::GUI::IComponentTagValue *control)
                     dynamic_cast<Surge::Widgets::Switch *>(filtersubtype[p->ctrlgroup_entry]);
                 if (subsw)
                 {
-                    int sc = sst::filters::fut_subcount[p->val.i];
+                    int sc = filterSubtypeCount(p->val.i);
 
                     subsw->setIntegerMax(sc);
                 }
@@ -4526,8 +4489,8 @@ void SurgeGUIEditor::valueChanged(Surge::GUI::IComponentTagValue *control)
         int idx = (tag == (f2subtypetag - 1)) ? 1 : 0;
 
         int a = synth->storage.getPatch().scene[current_scene].filterunit[idx].subtype.val.i;
-        int nn = sst::filters::fut_subcount
-            [synth->storage.getPatch().scene[current_scene].filterunit[idx].type.val.i];
+        int nn = filterSubtypeCount(
+            synth->storage.getPatch().scene[current_scene].filterunit[idx].type.val.i);
         if (a >= nn)
             a = 0;
         synth->storage.getPatch().scene[current_scene].filterunit[idx].subtype.val.i = a;

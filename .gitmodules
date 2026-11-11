@@ -41,9 +41,6 @@
 [submodule "libs/sst/sst-effects"]
 	path = libs/sst/sst-effects
 	url = https://github.com/surge-synthesizer/sst-effects
-[submodule "libs/sst/sst-filters"]
-	path = libs/sst/sst-filters
-	url = https://github.com/surge-synthesizer/sst-filters
 [submodule "libs/sst/sst-plugininfra"]
 	path = libs/sst/sst-plugininfra
 	url = https://github.com/surge-synthesizer/sst-plugininfra

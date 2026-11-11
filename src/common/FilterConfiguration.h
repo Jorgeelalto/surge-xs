@@ -27,119 +27,35 @@
 #include "sst/filters.h"
 #include "sst/waveshapers.h"
 
-/*
- * OK so what the heck is happening here, you may ask? Well, let me explain. Grab a cup of tea.
- *
- * As we approached Surge 1.8 with new filters, we realized our filter list was getting
- * long. So we decided to use submenus. But when doing that, we realized that the
- * natural grouping of filters (LP, BP, HP, Notch, Special...) didn't work with the way
- * our filter models had worked. We had things like "bandpass doesn't split 12 dB/24 dB" into
- * separate types, and "OB-Xd is kinda all sorts of filters". So, over in issue #3006,
- * we decided that some filters needed splitting, kinda like what Luna had done in the non-linear
- * feedback set. But splitting means that subtype counts change and streaming breaks.
- * And we wanted to split filters which weren't in streaming version 14 (1.7->1.8) either.
- *
- * So what we did was add in streaming version 15 a "post patch streaming fixup" operation
- * which allows you to see the prior version, the current version, and adjust. That way we can
- * do things like "OB-Xd subtype 7 in streaming version 14 is actually OB-Xd highpass subtype 3
- * in streaming version 15 and above". Or whatever.
- *
- * But to do *that*, we need to keep the old enums around so we can write that code. So these
- * are the old enums.
- *
- * Then the only question left is - how to split? I chose the 'add at end for splits' method. That
- * is, fut_14_bp12 splits into fut_bp12 and fut_bp24, but I added fut_bp24 at the end of the list.
- * Pros and cons: if I added it adjacent, the names in the name array would line up, but the
- * remapping code would be wildly more complicated. I chose simple remapping code (that is S&H and
- * vintage ladder are no-ops in remap) at the cost of an oddly ordered filter name list. That's the
- * right choice, but when you curse me for the odd name list, you can come back and read this
- * comment and feel slightly better. Finally, items which split and changed meaning got a new name
- * (so fut_comb is now fut_comb_pos and fut_comb_neg, say), which requires us to go and fix up any
- * code which referred to the old values.
- */
-
-enum fu_type_sv14
+inline int filterSubtypeCount(int filterType)
 {
-    fut_14_none = 0,
-    fut_14_lp12,
-    fut_14_lp24,
-    fut_14_lpmoog,
-    fut_14_hp12,
-    fut_14_hp24,
-    fut_14_bp12,
-    fut_14_notch12,
-    fut_14_comb,
-    fut_14_SNH,
-    fut_14_vintageladder,
-    fut_14_obxd_2pole,
-    fut_14_obxd_4pole,
-    fut_14_k35_lp,
-    fut_14_k35_hp,
-    fut_14_diode,
-    fut_14_cutoffwarp_lp,
-    fut_14_cutoffwarp_hp,
-    fut_14_cutoffwarp_n,
-    fut_14_cutoffwarp_bp,
-    n_fu_14_types,
-};
+    using sst::filters::FilterType;
+
+    if (filterType < 0 || filterType >= FilterType::num_filter_types)
+        return 0;
+
+    switch (filterType)
+    {
+    case FilterType::fut_bp12:
+        return 3;
+    case FilterType::fut_obxd_2pole_lp:
+    case FilterType::fut_diode:
+    case FilterType::fut_k35_lp:
+    case FilterType::fut_hp24:
+        return sst::filters::fut_subcount[filterType];
+    case FilterType::fut_none:
+    default:
+        return 0;
+    }
+}
 
 struct FilterSelectorMapper : public ParameterDiscreteIndexRemapper
 {
-    std::vector<std::pair<int, std::string>> mapping;
-    std::unordered_map<int, int> inverseMapping;
     std::vector<int> displayOrder;
     std::unordered_map<int, int> displayIndex;
-    void p(int i, const std::string &s) { mapping.push_back(std::make_pair(i, s)); }
     FilterSelectorMapper()
     {
         using sst::filters::FilterType;
-
-        p(FilterType::fut_none, "");
-
-        p(FilterType::fut_lp12, "Lowpass");
-        p(FilterType::fut_lp24, "Lowpass");
-        p(FilterType::fut_lpmoog, "Lowpass");
-        p(FilterType::fut_vintageladder, "Lowpass");
-        p(FilterType::fut_k35_lp, "Lowpass");
-        p(FilterType::fut_diode, "Lowpass");
-        p(FilterType::fut_obxd_2pole_lp, "Lowpass"); // ADJ
-        p(FilterType::fut_obxd_4pole, "Lowpass");
-        p(FilterType::fut_cutoffwarp_lp, "Lowpass");
-        p(FilterType::fut_resonancewarp_lp, "Lowpass");
-
-        p(FilterType::fut_bp12, "Bandpass");
-        p(FilterType::fut_bp24, "Bandpass");
-        p(FilterType::fut_obxd_2pole_bp, "Bandpass");
-        p(FilterType::fut_cutoffwarp_bp, "Bandpass");
-        p(FilterType::fut_resonancewarp_bp, "Bandpass");
-
-        p(FilterType::fut_hp12, "Highpass");
-        p(FilterType::fut_hp24, "Highpass");
-        p(FilterType::fut_k35_hp, "Highpass");
-        p(FilterType::fut_obxd_2pole_hp, "Highpass");
-        p(FilterType::fut_cutoffwarp_hp, "Highpass");
-        p(FilterType::fut_resonancewarp_hp, "Highpass");
-
-        p(FilterType::fut_notch12, "Notch");
-        p(FilterType::fut_notch24, "Notch");
-        p(FilterType::fut_obxd_2pole_n, "Notch");
-        p(FilterType::fut_cutoffwarp_n, "Notch");
-        p(FilterType::fut_resonancewarp_n, "Notch");
-
-        p(FilterType::fut_cytomic_svf, "Multi");
-        p(FilterType::fut_tripole, "Multi");
-        p(FilterType::fut_obxd_xpander, "Multi");
-
-        p(FilterType::fut_apf, "Effect");
-        p(FilterType::fut_cutoffwarp_ap, "Effect");
-        p(FilterType::fut_resonancewarp_ap, "Effect");
-        p(FilterType::fut_comb_pos, "Effect");
-        p(FilterType::fut_comb_neg, "Effect");
-        p(FilterType::fut_SNH, "Effect");
-
-        int c = 0;
-        for (auto e : mapping)
-            inverseMapping[e.first] = c++;
 
         displayOrder = {FilterType::fut_none,       FilterType::fut_obxd_2pole_lp,
                         FilterType::fut_diode,      FilterType::fut_k35_lp,
@@ -147,9 +63,6 @@ struct FilterSelectorMapper : public ParameterDiscreteIndexRemapper
         int index = 0;
         for (const auto type : displayOrder)
             displayIndex[type] = index++;
-
-        if (mapping.size() != FilterType::num_filter_types)
-            std::cout << "BAD MAPPING TYPES" << std::endl;
     }
 
     virtual int remapStreamedIndexToDisplayIndex(int i) const override
@@ -163,9 +76,9 @@ struct FilterSelectorMapper : public ParameterDiscreteIndexRemapper
     }
     virtual bool hasGroupNames() const override { return false; };
 
-    virtual std::string groupNameAtStreamedIndex(int i) const override
+    virtual std::string groupNameAtStreamedIndex(int) const override
     {
-        return mapping[inverseMapping.at(i)].second;
+        return {};
     }
 
     virtual bool sortGroupNames() const override { return false; }
@@ -187,47 +100,44 @@ struct FilterSelectorMapper : public ParameterDiscreteIndexRemapper
 const int lprow = 1;
 const int bprow = 2;
 const int hprow = 3;
-const int nrow = 4;
-const int multirow = 5;
-const int fxrow = 6;
 
 const int fut_glyph_index[sst::filters::num_filter_types][2] = {
-    {0, 0},        // fut_none
-    {0, lprow},    // fut_lp12
-    {1, lprow},    // fut_lp24
-    {3, lprow},    // fut_lpmoog
-    {0, hprow},    // fut_hp12
-    {1, hprow},    // fut_hp24
-    {0, bprow},    // fut_bp12
-    {0, nrow},     // fut_notch12
-    {1, fxrow},    // fut_comb_pos
-    {3, fxrow},    // fut_SNH
-    {4, lprow},    // fut_vintageladder
-    {6, lprow},    // fut_obxd_2pole
-    {7, lprow},    // fut_obxd_4pole
-    {2, lprow},    // fut_k35_lp
-    {2, hprow},    // fut_k35_hp
-    {5, lprow},    // fut_diode
-    {8, lprow},    // fut_cutoffwarp_lp
-    {4, hprow},    // fut_cutoffwarp_hp
-    {3, nrow},     // fut_cutoffwarp_n
-    {3, bprow},    // fut_cutoffwarp_bp
-    {3, hprow},    // fut_obxd_2pole_hp,
-    {2, nrow},     // fut_obxd_2pole_n,
-    {2, bprow},    // fut_obxd_2pole_bp,
-    {1, bprow},    // fut_bp24,
-    {1, nrow},     // fut_notch24,
-    {2, fxrow},    // fut_comb_neg,
-    {0, fxrow},    // fut_apf
-    {0, fxrow},    // fut_cutoffwarp_ap (this is temporarily set to just use the regular AP glyph)
-    {9, lprow},    // fut_resonancewarp_lp
-    {5, hprow},    // fut_resonancewarp_hp
-    {4, nrow},     // fut_resonancewarp_n
-    {4, bprow},    // fut_resonancewarp_bp
-    {0, fxrow},    // fut_resonancewarp_ap (also temporarily set to just use the regular AP glyph)
-    {0, multirow}, // fut_tripole
-    {1, multirow}, // fut_cytomicsvf
-    {2, multirow}, // fut_obxd_xpander
+    {0, 0},      // Off
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {1, hprow},  // HP 24 dB
+    {0, bprow},  // BP 12 dB
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {6, lprow},  // LP Oberheim
+    {0, 0},
+    {2, lprow},  // LP K35
+    {0, 0},
+    {5, lprow},  // LP Diode
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0}
 };
 
 const char wst_ui_names[(int)sst::waveshapers::WaveshaperType::n_ws_types][16] = {

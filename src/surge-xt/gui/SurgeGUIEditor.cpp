@@ -5238,11 +5238,11 @@ SurgeGUIEditor::layoutComponentForSkin(std::shared_ptr<Surge::GUI::Skin::Control
                                         .scene[current_scene]
                                         .filterunit[p->ctrlgroup_entry]
                                         .type.val.i;
-                    auto stc = sst::filters::fut_subcount[filttype];
+                    auto stc = filterSubtypeCount(filttype);
                     hsw->setIsMultiIntegerValued(true);
                     hsw->setIntegerMax(stc);
                     hsw->setIntegerValue(std::min(p->val.i + 1, stc));
-                    if (sst::filters::fut_subcount[filttype] == 0)
+                    if (stc == 0)
                         hsw->setIntegerValue(0);
 
                     if (p->ctrlgroup_entry == 1)
