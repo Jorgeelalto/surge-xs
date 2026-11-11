@@ -3144,6 +3144,8 @@ bool SurgeSynthesizer::setParameter01(long index, float value, bool external, bo
             // OK so this would work you would think but remember that FXSync is primary not the
             // patch so
             auto p = storage.getPatch().param_ptr[index];
+            if (!isAvailableFxType(p->val.i))
+                p->val.i = fxt_off;
             if (p->val.i != oldval.i)
             {
                 int cge = p->ctrlgroup_entry;

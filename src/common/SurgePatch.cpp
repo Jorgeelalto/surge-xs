@@ -2312,7 +2312,7 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
     bool removedEffect = false;
     for (auto &effect : fx)
     {
-        if (effect.type.val.i == fxt_removed_airwindows)
+        if (!isAvailableFxType(effect.type.val.i))
         {
             effect.type.val.i = fxt_off;
             removedEffect = true;
@@ -2320,7 +2320,7 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
     }
     if (removedEffect)
     {
-        storage->reportError("This patch used one or more Airwindows effects, which are no longer "
+        storage->reportError("This patch used one or more effects which are no longer "
                              "available. Those effect slots have been turned off.",
                              "Unavailable Effects");
     }

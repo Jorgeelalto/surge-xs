@@ -3,9 +3,13 @@
 This note describes effect creation, replacement, and initialization as of commit
 `8e03ba0b54b09` or thereabouts.
 
-Airwindows effects are no longer included. Their type IDs remain reserved for
-compatibility. Loading a patch or FX chain that uses one turns that slot off and reports
-a warning. Bundled Airwindows impulse responses are also no longer included.
+Only Ensemble, Delay, and Reverb 1 can be selected or instantiated. Other effect IDs
+remain reserved so the retained effects keep their original patch and automation IDs.
+Loading a patch or FX preset using an unavailable effect turns that slot off and reports
+a warning; automation targeting an unavailable ID turns the slot off. Presets for
+unavailable effects are omitted from the menu. Most unused effect implementations have
+been removed; Conditioner and Convolution still build for their legacy GUI code, but
+cannot be instantiated.
 
 ## Core structures and functions
 

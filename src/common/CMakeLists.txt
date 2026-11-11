@@ -121,104 +121,19 @@ add_library(${PROJECT_NAME}
   dsp/WtGenService.h
   dsp/effects/BBDEnsembleEffect.cpp
   dsp/effects/BBDEnsembleEffect.h
-  dsp/effects/BonsaiEffect.cpp
-  dsp/effects/BonsaiEffect.h
-  dsp/effects/ChorusEffect.h
-  dsp/effects/ChorusEffectImpl.h
-  dsp/effects/CombulatorEffect.cpp
-  dsp/effects/CombulatorEffect.h
   dsp/effects/ConditionerEffect.cpp
   dsp/effects/ConditionerEffect.h
   dsp/effects/ConvolutionEffect.cpp
   dsp/effects/ConvolutionEffect.h
   dsp/effects/DelayEffect.cpp
   dsp/effects/DelayEffect.h
-  dsp/effects/DistortionEffect.cpp
-  dsp/effects/DistortionEffect.h
-  dsp/effects/FlangerEffect.cpp
-  dsp/effects/FlangerEffect.h
-  dsp/effects/FloatyDelayEffect.cpp
-  dsp/effects/FloatyDelayEffect.h
-  dsp/effects/FrequencyShifterEffect.cpp
-  dsp/effects/FrequencyShifterEffect.h
-  dsp/effects/GraphicEQ11BandEffect.cpp
-  dsp/effects/GraphicEQ11BandEffect.h
   dsp/effects/ModControl.h
-  dsp/effects/MSToolEffect.cpp
-  dsp/effects/MSToolEffect.h
-  dsp/effects/NimbusEffect.cpp
-  dsp/effects/NimbusEffect.h
-  dsp/effects/ParametricEQ3BandEffect.cpp
-  dsp/effects/ParametricEQ3BandEffect.h
-  dsp/effects/PhaserEffect.cpp
-  dsp/effects/PhaserEffect.h
-  dsp/effects/ResonatorEffect.cpp
-  dsp/effects/ResonatorEffect.h
   dsp/effects/Reverb1Effect.cpp
   dsp/effects/Reverb1Effect.h
-  dsp/effects/Reverb2Effect.cpp
-  dsp/effects/Reverb2Effect.h
-  dsp/effects/RingModulatorEffect.cpp
-  dsp/effects/RingModulatorEffect.h
-  dsp/effects/RotarySpeakerEffect.cpp
-  dsp/effects/RotarySpeakerEffect.h
-  dsp/effects/TreemonsterEffect.cpp
-  dsp/effects/TreemonsterEffect.h
-  dsp/effects/VocoderEffect.cpp
-  dsp/effects/VocoderEffect.h
-  dsp/effects/WaveShaperEffect.cpp
-  dsp/effects/WaveShaperEffect.h
-  dsp/effects/chowdsp/CHOWEffect.cpp
-  dsp/effects/chowdsp/CHOWEffect.h
-  dsp/effects/chowdsp/ExciterEffect.cpp
-  dsp/effects/chowdsp/ExciterEffect.h
-  dsp/effects/chowdsp/NeuronEffect.cpp
-  dsp/effects/chowdsp/NeuronEffect.h
-  dsp/effects/chowdsp/SpringReverbEffect.cpp
-  dsp/effects/chowdsp/SpringReverbEffect.h
-  dsp/effects/chowdsp/TapeEffect.cpp
-  dsp/effects/chowdsp/TapeEffect.h
-  dsp/effects/chowdsp/bbd_utils/BBDCompander.h
   dsp/effects/chowdsp/bbd_utils/BBDDelayLine.cpp
   dsp/effects/chowdsp/bbd_utils/BBDDelayLine.h
   dsp/effects/chowdsp/bbd_utils/BBDFilterBank.h
   dsp/effects/chowdsp/bbd_utils/BBDNonlin.h
-  dsp/effects/chowdsp/exciter/LevelDetector.cpp
-  dsp/effects/chowdsp/exciter/LevelDetector.h
-  dsp/effects/chowdsp/shared/BilinearUtils.h
-  dsp/effects/chowdsp/shared/chowdsp_DelayInterpolation.h
-  dsp/effects/chowdsp/shared/chowdsp_DelayLine.h
-  dsp/effects/chowdsp/shared/FIRFIlter.h
-  dsp/effects/chowdsp/shared/Oversampling.h
-  dsp/effects/chowdsp/shared/Shelf.h
-  dsp/effects/chowdsp/shared/SmoothedValue.h
-  dsp/effects/chowdsp/shared/StateVariableFilter.cpp
-  dsp/effects/chowdsp/shared/StateVariableFilter.h
-  dsp/effects/chowdsp/shared/chowdsp_IIR.h
-  dsp/effects/chowdsp/shared/omega.h
-  dsp/effects/chowdsp/shared/wdf.h
-  dsp/effects/chowdsp/shared/wdf_sse.h
-  dsp/effects/chowdsp/spring_reverb/ReflectionNetwork.h
-  dsp/effects/chowdsp/spring_reverb/SchroederAllpass.h
-  dsp/effects/chowdsp/spring_reverb/SpringReverbProc.cpp
-  dsp/effects/chowdsp/spring_reverb/SpringReverbProc.h
-  dsp/effects/chowdsp/tape/ChewDropout.h
-  dsp/effects/chowdsp/tape/ChewProcessor.cpp
-  dsp/effects/chowdsp/tape/ChewProcessor.h
-  dsp/effects/chowdsp/tape/DegradeFilter.h
-  dsp/effects/chowdsp/tape/DegradeNoise.h
-  dsp/effects/chowdsp/tape/DegradeProcessor.cpp
-  dsp/effects/chowdsp/tape/DegradeProcessor.h
-  dsp/effects/chowdsp/tape/HysteresisProcessing.cpp
-  dsp/effects/chowdsp/tape/HysteresisProcessing.h
-  dsp/effects/chowdsp/tape/HysteresisProcessor.cpp
-  dsp/effects/chowdsp/tape/HysteresisProcessor.h
-  dsp/effects/chowdsp/tape/LossFilter.cpp
-  dsp/effects/chowdsp/tape/LossFilter.h
-  dsp/effects/chowdsp/tape/ToneControl.cpp
-  dsp/effects/chowdsp/tape/ToneControl.h
-  dsp/effects/AudioInputEffect.cpp
-  dsp/effects/AudioInputEffect.h
   dsp/filters/BiquadFilter.h
   dsp/filters/VectorizedSVFilter.cpp
   dsp/filters/VectorizedSVFilter.h

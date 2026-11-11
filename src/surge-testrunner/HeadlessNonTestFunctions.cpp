@@ -948,7 +948,7 @@ void patchChangeSoak(int seconds, int readerThreads)
              */
             auto slot = (int)(loads % n_fx_slots);
             auto &fxType = surge->storage.getPatch().fx[slot].type;
-            const int cycle[] = {fxt_delay, fxt_off, fxt_reverb2, fxt_phaser};
+            const int cycle[] = {fxt_delay, fxt_off, fxt_reverb, fxt_ensemble};
             const int want = cycle[(loads / n_fx_slots) % std::size(cycle)];
 
             if (fxType.val.i != want)

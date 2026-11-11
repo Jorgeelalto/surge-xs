@@ -457,6 +457,11 @@ enum fx_type
     n_fx_types,
 };
 
+inline bool isAvailableFxType(int type)
+{
+    return type == fxt_off || type == fxt_delay || type == fxt_reverb || type == fxt_ensemble;
+}
+
 const char fx_type_names[n_fx_types][32] = {"Off",
                                             "Delay",
                                             "Reverb 1",

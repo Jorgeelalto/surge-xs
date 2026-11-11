@@ -181,25 +181,24 @@ TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
         const auto second = patch.fx[1].type.get_storage_name();
         const auto third = patch.fx[2].type.get_storage_name();
         auto xml = fmt::format(
-            "<patch><parameters><{0} value=\"14\"/><{1} value=\"15\"/>"
-            "<{2} value=\"14\"/></parameters></patch>",
+            "<patch><parameters><{0} value=\"14\"/><{1} value=\"20\"/>"
+            "<{2} value=\"15\"/></parameters></patch>",
             first, second, third);
         patch.load_xml(xml.c_str(), static_cast<int>(xml.size()), false);
         REQUIRE(patch.fx[0].type.val.i == fxt_off);
-        REQUIRE(patch.fx[1].type.val.i == fxt_neuron);
+        REQUIRE(patch.fx[1].type.val.i == fxt_ensemble);
         REQUIRE(patch.fx[2].type.val.i == fxt_off);
-        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
-        REQUIRE(fxt_neuron == 15);
+        REQUIRE(errors.message.find("no longer") != std::string::npos);
     }
 
     SECTION("Single FX preset")
     {
         Surge::Storage::FxUserPreset manager;
         Surge::Storage::FxUserPreset::Preset preset;
-        preset.type = fxt_removed_airwindows;
+        preset.type = fxt_phaser;
         manager.loadPresetOnto(preset, &storage, &patch.fx[0]);
         REQUIRE(patch.fx[0].type.val.i == fxt_off);
-        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
+        REQUIRE(errors.message.find("no longer") != std::string::npos);
     }
 
     SECTION("Session state")
@@ -207,21 +206,21 @@ TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
         auto source = Surge::Headless::createSurge(44100);
         REQUIRE(source);
         source->storage.getPatch().fx[0].type.val.i = fxt_removed_airwindows;
-        source->storage.getPatch().fx[1].type.val.i = fxt_neuron;
+        source->storage.getPatch().fx[1].type.val.i = fxt_delay;
         void *data = nullptr;
         auto size = source->saveRaw(&data);
         REQUIRE(size > 0);
         surge->loadRaw(data, size, false);
         REQUIRE(patch.fx[0].type.val.i == fxt_off);
-        REQUIRE(patch.fx[1].type.val.i == fxt_neuron);
-        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
+        REQUIRE(patch.fx[1].type.val.i == fxt_delay);
+        REQUIRE(errors.message.find("no longer") != std::string::npos);
     }
 
     SECTION("FX chain")
     {
         Surge::Storage::FxChainUserPreset manager;
         Surge::Storage::FxChainUserPreset::Preset preset;
-        preset.slots[0].type = fxt_removed_airwindows;
+        preset.slots[0].type = fxt_reverb2;
         preset.slots[1].type = fxt_delay;
         FxStorage *slots[n_fx_per_chain];
         for (int i = 0; i < n_fx_per_chain; ++i)
@@ -229,7 +228,25 @@ TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
         manager.loadPresetOnto(preset, &storage, slots);
         REQUIRE(slots[0]->type.val.i == fxt_off);
         REQUIRE(slots[1]->type.val.i == fxt_delay);
-        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
+        REQUIRE(errors.message.find("no longer") != std::string::npos);
+    }
+
+    SECTION("Automation")
+    {
+        auto *type = &patch.fx[0].type;
+        auto id = surge->idForParameter(type);
+        for (int t = 0; t < n_fx_types; ++t)
+        {
+            surge->setParameter01(id, static_cast<float>(t) / (n_fx_types - 1), false);
+            surge->process();
+            const bool available = t == fxt_delay || t == fxt_reverb || t == fxt_ensemble;
+            REQUIRE(type->val.i == (available ? t : fxt_off));
+#if defined(_M_ARM64EC)
+            REQUIRE(static_cast<bool>(surge->fx[0]) == (available && t != fxt_ensemble));
+#else
+            REQUIRE(static_cast<bool>(surge->fx[0]) == available);
+#endif
+        }
     }
     storage.removeErrorListener(&errors);
 }

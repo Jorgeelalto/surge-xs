@@ -3884,7 +3884,7 @@ std::string Parameter::get_display(bool external, float ef) const
             break;
         }
         case ct_fxtype:
-            txt = fx_type_shortnames[limit_range(i, 0, (int)n_fx_types - 1)];
+            txt = isAvailableFxType(i) ? fx_type_shortnames[i] : "Unavailable";
             break;
         case ct_reverbshape:
             txt = fmt::format("Type {:d}", i + 1);

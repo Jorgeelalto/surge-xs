@@ -24,36 +24,8 @@
 #include "BBDEnsembleEffect.h"
 #endif
 
-#include "BonsaiEffect.h"
-#include "ChorusEffectImpl.h"
-#include "CombulatorEffect.h"
-#include "ConditionerEffect.h"
-#include "ConvolutionEffect.h"
-#include "DistortionEffect.h"
 #include "DelayEffect.h"
-#include "FlangerEffect.h"
-#include "FrequencyShifterEffect.h"
-#include "GraphicEQ11BandEffect.h"
-#include "MSToolEffect.h"
-#include "NimbusEffect.h"
-#include "ParametricEQ3BandEffect.h"
-#include "PhaserEffect.h"
-#include "ResonatorEffect.h"
 #include "Reverb1Effect.h"
-#include "Reverb2Effect.h"
-#include "RingModulatorEffect.h"
-#include "RotarySpeakerEffect.h"
-#include "TreemonsterEffect.h"
-#include "VocoderEffect.h"
-#include "WaveShaperEffect.h"
-#include "chowdsp/NeuronEffect.h"
-#include "chowdsp/CHOWEffect.h"
-#include "chowdsp/ExciterEffect.h"
-#include "chowdsp/SpringReverbEffect.h"
-#include "chowdsp/TapeEffect.h"
-#include "DebugHelpers.h"
-#include "AudioInputEffect.h"
-#include "FloatyDelayEffect.h"
 
 using namespace std;
 
@@ -65,69 +37,14 @@ Effect *spawn_effect(int id, SurgeStorage *storage, FxStorage *fxdata, pdata *pd
     {
     case fxt_delay:
         return new DelayEffect(storage, fxdata, pd);
-    case fxt_eq:
-        return new ParametricEQ3BandEffect(storage, fxdata, pd);
-    case fxt_phaser:
-        return new PhaserEffect(storage, fxdata, pd);
-    case fxt_rotaryspeaker:
-        return new RotarySpeakerEffect(storage, fxdata, pd);
-    case fxt_distortion:
-        return new DistortionEffect(storage, fxdata, pd);
     case fxt_reverb:
         return new Reverb1Effect(storage, fxdata, pd);
-    case fxt_reverb2:
-        return new Reverb2Effect(storage, fxdata, pd);
-    case fxt_freqshift:
-        return new FrequencyShifterEffect(storage, fxdata, pd);
-    case fxt_conditioner:
-        return new ConditionerEffect(storage, fxdata, pd);
-    case fxt_chorus4:
-        return new ChorusEffect<4>(storage, fxdata, pd);
-    case fxt_vocoder:
-        return new VocoderEffect(storage, fxdata, pd);
-    case fxt_flanger:
-        return new FlangerEffect(storage, fxdata, pd);
-    case fxt_ringmod:
-        return new RingModulatorEffect(storage, fxdata, pd);
-    case fxt_neuron:
-        return new chowdsp::NeuronEffect(storage, fxdata, pd);
-    case fxt_geq11:
-        return new GraphicEQ11BandEffect(storage, fxdata, pd);
-    case fxt_resonator:
-        return new ResonatorEffect(storage, fxdata, pd);
-    case fxt_combulator:
-        return new CombulatorEffect(storage, fxdata, pd);
-    case fxt_chow:
-        return new chowdsp::CHOWEffect(storage, fxdata, pd);
-    case fxt_nimbus:
-        return new NimbusEffect(storage, fxdata, pd);
-    case fxt_exciter:
-        return new chowdsp::ExciterEffect(storage, fxdata, pd);
-    case fxt_tape:
-        return new chowdsp::TapeEffect(storage, fxdata, pd);
     case fxt_ensemble:
 #if defined(_M_ARM64EC)
         return nullptr;
 #else
         return new BBDEnsembleEffect(storage, fxdata, pd);
 #endif
-    case fxt_treemonster:
-        return new TreemonsterEffect(storage, fxdata, pd);
-    case fxt_waveshaper:
-        return new WaveShaperEffect(storage, fxdata, pd);
-    case fxt_mstool:
-        return new MSToolEffect(storage, fxdata, pd);
-    case fxt_spring_reverb:
-        return new chowdsp::SpringReverbEffect(storage, fxdata, pd);
-    case fxt_bonsai:
-        return new BonsaiEffect(storage, fxdata, pd);
-    case fxt_audio_input:
-        return new AudioInputEffect(storage, fxdata, pd);
-    case fxt_floaty_delay:
-        return new FloatyDelayEffect(storage, fxdata, pd);
-    case fxt_convolution:
-        return new ConvolutionEffect(storage, fxdata, pd);
-
     default:
         return 0;
     };

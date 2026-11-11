@@ -107,7 +107,7 @@ void FxUserPreset::doPresetRescan(SurgeStorage *storage, bool forceRescan)
                 if (s->QueryIntAttribute("type", &t) != TIXML_SUCCESS)
                     goto badPreset;
 
-                if (t == fxt_removed_airwindows)
+                if (!isAvailableFxType(t) || t == fxt_off)
                     continue;
 
                 preset.type = t;
@@ -397,11 +397,11 @@ void FxUserPreset::saveFxIn(SurgeStorage *storage, FxStorage *fx, const std::str
 
 void FxUserPreset::loadPresetOnto(const Preset &p, SurgeStorage *storage, FxStorage *fxbuffer)
 {
-    if (p.type == fxt_removed_airwindows)
+    if (!isAvailableFxType(p.type))
     {
         fxbuffer->type.val.i = fxt_off;
         fxbuffer->user_data.clear();
-        storage->reportError("This preset uses an Airwindows effect, which is no longer available. "
+        storage->reportError("This preset uses an effect which is no longer available. "
                              "The effect slot has been turned off.",
                              "Unavailable Effects");
         return;
@@ -744,10 +744,10 @@ void FxChainUserPreset::loadPresetOnto(const Preset &p, SurgeStorage *storage,
         const auto &sd = p.slots[slot];
         FxStorage *buf = fxbuffer[slot];
 
-        buf->type.val.i = sd.type == fxt_removed_airwindows ? fxt_off : sd.type;
+        buf->type.val.i = isAvailableFxType(sd.type) ? sd.type : fxt_off;
         buf->user_data.clear();
 
-        if (sd.type == fxt_removed_airwindows)
+        if (!isAvailableFxType(sd.type))
         {
             removedEffect = true;
             continue;
@@ -794,12 +794,12 @@ void FxChainUserPreset::loadPresetOnto(const Preset &p, SurgeStorage *storage,
                 t_fx->handleStreamingMismatches(p.streamingVersion, ff_revision);
             delete t_fx;
         }
-        if (removedEffect)
-        {
-            storage->reportError("This FX chain used one or more Airwindows effects, which are no "
-                                 "longer available. Those effect slots have been turned off.",
-                                 "Unavailable Effects");
-        }
+    }
+    if (removedEffect)
+    {
+        storage->reportError("This FX chain used one or more effects which are no longer "
+                             "available. Those effect slots have been turned off.",
+                             "Unavailable Effects");
     }
 }
 

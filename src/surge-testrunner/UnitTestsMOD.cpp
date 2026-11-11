@@ -1499,7 +1499,7 @@ TEST_CASE("Enumerate Modulations From A Source", "[mod]")
         auto surge = Surge::Headless::createSurge(44100);
         REQUIRE(surge);
 
-        Surge::Test::setFX(surge, 0, fxt_combulator);
+        Surge::Test::setFX(surge, 0, fxt_delay);
 
         auto fxp = surge->storage.getPatch().fx[0].p[2].id;
 
