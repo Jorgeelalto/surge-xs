@@ -435,7 +435,7 @@ enum fx_type
     fxt_reverb2,
     fxt_flanger,
     fxt_ringmod,
-    fxt_airwindows,
+    fxt_removed_airwindows, // Reserved for patches and automation using the original effect IDs.
     fxt_neuron,
     fxt_geq11,
     fxt_resonator,
@@ -471,7 +471,7 @@ const char fx_type_names[n_fx_types][32] = {"Off",
                                             "Reverb 2",
                                             "Flanger",
                                             "Ring Modulator",
-                                            "Airwindows",
+                                            "Unavailable",
                                             "Neuron",
                                             "Graphic EQ",
                                             "Resonator",
@@ -493,14 +493,14 @@ const char fx_type_names[n_fx_types][32] = {"Off",
 const char fx_type_shortnames[n_fx_types][16] = {
     "Off",          "Delay",      "Reverb 1",      "Phaser",        "Rotary",     "Distortion",
     "EQ",           "Freq Shift", "Conditioner",   "Chorus",        "Vocoder",    "Reverb 2",
-    "Flanger",      "Ring Mod",   "Airwindows",    "Neuron",        "Graphic EQ", "Resonator",
+    "Flanger",      "Ring Mod",   "Unavailable",   "Neuron",        "Graphic EQ", "Resonator",
     "CHOW",         "Exciter",    "Ensemble",      "Combulator",    "Nimbus",     "Tape",
     "Treemonster",  "Waveshaper", "Mid-Side Tool", "Spring Reverb", "Bonsai",     "Audio In",
     "Floaty Delay", "Convolution"};
 
 const char fx_type_acronyms[n_fx_types][8] = {
     "OFF", "DLY",  "RV1", "PH", "ROT", "DIST", "EQ",  "FRQ", "DYN", "CH",  "VOC",
-    "RV2", "FL",   "RM",  "AW", "NEU", "GEQ",  "RES", "CHW", "XCT", "ENS", "CMB",
+    "RV2", "FL",   "RM",  "---", "NEU", "GEQ",  "RES", "CHW", "XCT", "ENS", "CMB",
     "NIM", "TAPE", "TM",  "WS", "M-S", "SRV",  "BON", "IN",  "FDL", "IR"};
 
 enum fx_bypass

@@ -95,8 +95,6 @@ class alignas(16) Effect
     // virtual void processT<int architecture>(float *dataL, float *dataR){ return; }
     virtual void suspend() { return; }
 
-    // Most of the fx read the sample rate at sample time but airwindows
-    // keeps a cache so give loaded fx a notice when the sample rate changes
     virtual void sampleRateReset() {}
 
     virtual void handleStreamingMismatches(int streamingRevision, int currentSynthStreamingRevision)

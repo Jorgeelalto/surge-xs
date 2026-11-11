@@ -46,7 +46,6 @@
 #include "TreemonsterEffect.h"
 #include "VocoderEffect.h"
 #include "WaveShaperEffect.h"
-#include "airwindows/AirWindowsEffect.h"
 #include "chowdsp/NeuronEffect.h"
 #include "chowdsp/CHOWEffect.h"
 #include "chowdsp/ExciterEffect.h"
@@ -90,8 +89,6 @@ Effect *spawn_effect(int id, SurgeStorage *storage, FxStorage *fxdata, pdata *pd
         return new FlangerEffect(storage, fxdata, pd);
     case fxt_ringmod:
         return new RingModulatorEffect(storage, fxdata, pd);
-    case fxt_airwindows:
-        return new AirWindowsEffect(storage, fxdata, pd);
     case fxt_neuron:
         return new chowdsp::NeuronEffect(storage, fxdata, pd);
     case fxt_geq11:

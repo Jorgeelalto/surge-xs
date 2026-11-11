@@ -236,7 +236,6 @@ endif()
 # }}}
 # Source Groups {{{
 source_group("Libraries" REGULAR_EXPRESSION "libs/")
-source_group("AirWindows" REGULAR_EXPRESSION "libs/airwindows/")
 source_group("Surge Core" REGULAR_EXPRESSION "src/common/.*\.cpp")
 source_group("Surge DSP" REGULAR_EXPRESSION "src/common/dsp/")
 source_group("Surge FX" REGULAR_EXPRESSION "src/common/dsp/effects/")

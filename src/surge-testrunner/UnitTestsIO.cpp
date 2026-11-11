@@ -28,12 +28,14 @@
 #include "Player.h"
 
 #include "catch2/catch_amalgamated.hpp"
+#include "fmt/format.h"
 
 #include "UnitTestUtilities.h"
 #include "WavetableScriptEvaluator.h"
 #include "dsp/oscillators/WavetableOscillator.h"
 #include "dsp/oscillators/WindowOscillator.h"
 #include "PatchFileHeaderStructs.h"
+#include "FxPresetAndClipboardManager.h"
 #include "sst/basic-blocks/mechanics/endian-ops.h"
 
 namespace mech = sst::basic_blocks::mechanics;
@@ -163,6 +165,74 @@ struct WavErrorCatcher : SurgeStorage::ErrorListener
         message = msg;
     }
 };
+
+TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
+{
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    auto &storage = surge->storage;
+    auto &patch = storage.getPatch();
+    WavErrorCatcher errors;
+    storage.addErrorListener(&errors);
+
+    SECTION("Patch")
+    {
+        const auto first = patch.fx[0].type.get_storage_name();
+        const auto second = patch.fx[1].type.get_storage_name();
+        const auto third = patch.fx[2].type.get_storage_name();
+        auto xml = fmt::format(
+            "<patch><parameters><{0} value=\"14\"/><{1} value=\"15\"/>"
+            "<{2} value=\"14\"/></parameters></patch>",
+            first, second, third);
+        patch.load_xml(xml.c_str(), static_cast<int>(xml.size()), false);
+        REQUIRE(patch.fx[0].type.val.i == fxt_off);
+        REQUIRE(patch.fx[1].type.val.i == fxt_neuron);
+        REQUIRE(patch.fx[2].type.val.i == fxt_off);
+        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
+        REQUIRE(fxt_neuron == 15);
+    }
+
+    SECTION("Single FX preset")
+    {
+        Surge::Storage::FxUserPreset manager;
+        Surge::Storage::FxUserPreset::Preset preset;
+        preset.type = fxt_removed_airwindows;
+        manager.loadPresetOnto(preset, &storage, &patch.fx[0]);
+        REQUIRE(patch.fx[0].type.val.i == fxt_off);
+        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
+    }
+
+    SECTION("Session state")
+    {
+        auto source = Surge::Headless::createSurge(44100);
+        REQUIRE(source);
+        source->storage.getPatch().fx[0].type.val.i = fxt_removed_airwindows;
+        source->storage.getPatch().fx[1].type.val.i = fxt_neuron;
+        void *data = nullptr;
+        auto size = source->saveRaw(&data);
+        REQUIRE(size > 0);
+        surge->loadRaw(data, size, false);
+        REQUIRE(patch.fx[0].type.val.i == fxt_off);
+        REQUIRE(patch.fx[1].type.val.i == fxt_neuron);
+        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
+    }
+
+    SECTION("FX chain")
+    {
+        Surge::Storage::FxChainUserPreset manager;
+        Surge::Storage::FxChainUserPreset::Preset preset;
+        preset.slots[0].type = fxt_removed_airwindows;
+        preset.slots[1].type = fxt_delay;
+        FxStorage *slots[n_fx_per_chain];
+        for (int i = 0; i < n_fx_per_chain; ++i)
+            slots[i] = &patch.fx[i];
+        manager.loadPresetOnto(preset, &storage, slots);
+        REQUIRE(slots[0]->type.val.i == fxt_off);
+        REQUIRE(slots[1]->type.val.i == fxt_delay);
+        REQUIRE(errors.message.find("Airwindows") != std::string::npos);
+    }
+    storage.removeErrorListener(&errors);
+}
 
 bool loadTestWav(const fs::path &p, std::string &md, std::string *error = nullptr)
 {

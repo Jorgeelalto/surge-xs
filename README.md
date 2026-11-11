@@ -8,6 +8,7 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 ## Roadmap
 
 - [x] Remove Surge FX, Python and Rust bindings.
+- [x] Remove Airwindows stuff
 - [ ] Select effects, filters and oscillators to keep.
    - Wanted FXs:
    - Wanted filters:
@@ -20,7 +21,6 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 - [ ] Simplify modulations (TBD).
 - [ ] Reorder GUI items. Make space for visualizations.
 - [ ] Add filter shape visualization.
-- [ ] Add output meters.
 
 # Developing Surge XS
 

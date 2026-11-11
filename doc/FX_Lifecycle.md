@@ -2,6 +2,10 @@
 
 This documents how effects are created, swapped, initialized, etc... as of commit `8e03ba0b54b09` or so. 
 
+Airwindows effects are no longer included. Their effect type ID remains reserved for
+compatibility; loading a patch or FX chain that uses them turns those slots off and
+reports a warning. The bundled Airwindows impulse responses are also no longer included.
+
 There's lots of cases. Let's enumerate all of them:
 
 ## Core data structures and Functions
@@ -105,14 +109,6 @@ Question: is bypass from CEG different than global bypass?
 * After that it's just like a same-type load
 
 ## Swap an effect
-
-## An Airwindows effect is activated and changes type
-
-## An Airwindows effect is deactivated and changes type
-
-## A non-Airwindows effect becomes an Airwindows effect in activated state
-
-## A non-Airwindow effect becomes an Airwindows effect in deactivated state
 
 ## The DAW automation path
 

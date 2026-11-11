@@ -758,10 +758,8 @@ void generateNLFeedbackNorms()
  * a patch change. The Logic one does not even need the editor open: the host polls parameter
  * names and texts off the live parameter on its own main thread.
  *
- * So this plays notes continuously, rotates through a pool of patches alternating between ones
- * that use Airwindows and ones that don't (Airwindows is the interesting case because its
- * parameter user data points at members of the effect instance, and factory patches barely use
- * it), and runs reader threads which hammer exactly the two calls those stacks show. The audio
+ * So this plays notes continuously, rotates through a pool of patches, and runs reader threads
+ * which hammer exactly the two calls those stacks show. The audio
  * loop runs flat out rather than in real time, so a minute here is worth a great many minutes
  * of real playing.
  *
@@ -784,10 +782,6 @@ void patchChangeSoak(int seconds, int readerThreads)
     _set_abort_behavior(_WRITE_ABORT_MSG, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
 
-    /*
-     * Alternating so that every rotation destroys and respawns Airwindows effects, which is the
-     * transition that frees the parameter formatters.
-     */
     const std::vector<std::string> patchPool = {
         "resources/data/patches_3rdparty/Altenberg/Drums/Linn Kick Tape.fxp",
         "resources/data/patches_3rdparty/A.Liv/Keys/November.fxp",
@@ -950,13 +944,11 @@ void patchChangeSoak(int seconds, int readerThreads)
              * update_controls(from_streaming), which spawns a throwaway effect and reinitializes
              * every FX parameter's type - so by the time loadFx destroys the old effect the
              * parameters have already let go of it. Only a type change reaches loadFx with the
-             * effect's own user data still published, and "changing on and off of Airwindows" is
-             * what the reports in #6619 describe anyway.
+             * effect's own user data still published.
              */
             auto slot = (int)(loads % n_fx_slots);
             auto &fxType = surge->storage.getPatch().fx[slot].type;
-            const int cycle[] = {fxt_airwindows, fxt_delay,      fxt_off,
-                                 fxt_reverb2,    fxt_airwindows, fxt_phaser};
+            const int cycle[] = {fxt_delay, fxt_off, fxt_reverb2, fxt_phaser};
             const int want = cycle[(loads / n_fx_slots) % std::size(cycle)];
 
             if (fxType.val.i != want)

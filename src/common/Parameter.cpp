@@ -340,7 +340,6 @@ bool Parameter::can_deactivate() const
     case ct_freq_audible_deactivatable_lp:
     case ct_lforate_deactivatable:
     case ct_rotarydrive:
-    case ct_airwindows_fx:
     case ct_decibel_deactivatable:
     case ct_decibel_narrow_deactivatable:
     case ct_decibel_extra_narrow_deactivatable:
@@ -432,7 +431,6 @@ bool Parameter::is_bipolar() const
     case ct_filter_feedback:
     case ct_osc_feedback_negative:
     case ct_lfodeform:
-    case ct_airwindows_param_bipolar:
     case ct_pitch:
     case ct_pitch4oct:
     case ct_modern_trimix:
@@ -474,7 +472,6 @@ bool Parameter::is_discrete_selection() const
     case ct_sineoscmode:
     case ct_ringmod_sineoscmode:
     case ct_wt2window:
-    case ct_airwindows_fx:
     case ct_flangermode:
     case ct_fxlfowave:
     case ct_fxlfowave_extended:
@@ -550,7 +547,6 @@ void Parameter::set_user_data(ParamUserData *ud)
             user_data = nullptr;
         }
         break;
-    case ct_airwindows_fx:
     case ct_filtertype:
     case ct_alias_wave:
     case ct_wstype:
@@ -564,9 +560,6 @@ void Parameter::set_user_data(ParamUserData *ud)
             user_data = nullptr;
         }
         break;
-    case ct_airwindows_param:
-    case ct_airwindows_param_bipolar:
-    case ct_airwindows_param_integral:
     case ct_percent_bipolar_w_dynamic_unipolar_formatting:
         if (dynamic_cast<ParameterExternalFormatter *>(ud))
         {
@@ -1297,25 +1290,6 @@ void Parameter::set_type(int ctrltype)
         valtype = vt_float;
         val_default.f = 0;
         break;
-    case ct_airwindows_fx:
-        val_min.i = 0;
-        val_max.i = 10;
-        valtype = vt_int;
-        val_default.i = 0;
-        break;
-    case ct_airwindows_param:
-    case ct_airwindows_param_bipolar: // it's still 0 ... 1 - this is just a display thing
-        val_min.f = 0;
-        val_max.f = 1;
-        valtype = vt_float;
-        val_default.f = 0;
-        break;
-    case ct_airwindows_param_integral:
-        val_min.i = 0;
-        val_max.i = 1;
-        valtype = vt_int;
-        val_default.i = 0;
-        break;
     case ct_phaser_spread:
         val_min.f = 0;
         val_max.f = 1;
@@ -1706,15 +1680,6 @@ void Parameter::set_type(int ctrltype)
         snprintf(displayInfo.unit, DISPLAYINFO_TXT_SIZE, "dB");
         break;
 
-    case ct_airwindows_param:
-    case ct_airwindows_param_bipolar:
-    case ct_airwindows_param_integral:
-        displayType = DelegatedToFormatter;
-        displayInfo.scale = 1.f;
-        displayInfo.unit[0] = 0;
-        displayInfo.decimals = 3;
-        break;
-
     case ct_comp_attack_ms:
         displayType = ATwoToTheBx;
         displayInfo.a = 1.0f;
@@ -1862,8 +1827,6 @@ void Parameter::bound_value(bool force_integer)
         case ct_detuning:
         case ct_lfoamplitude:
         case ct_lfophaseshuffle:
-        case ct_airwindows_param:
-        case ct_airwindows_param_bipolar:
         case ct_lfodeform:
         case ct_reson_res_extendable:
         case ct_modern_trimix:
@@ -4315,21 +4278,6 @@ std::string Parameter::get_display(bool external, float ef) const
         }
         break;
 
-        case ct_airwindows_fx:
-        {
-            // These are all the ones with a ParameterDiscreteIndexRemapper
-            auto pd = dynamic_cast<ParameterDiscreteIndexRemapper *>(user_data);
-
-            if (pd)
-            {
-                txt = pd->nameAtStreamedIndex(i);
-            }
-            else
-            {
-                txt = std::to_string(i);
-            }
-            break;
-        }
         case ct_nimbusmode:
         {
             switch (i)
@@ -4691,8 +4639,6 @@ bool Parameter::can_setvalue_from_string() const
     case ct_rotarydrive:
     case ct_sendlevel:
     case ct_freq_mod:
-    case ct_airwindows_param:
-    case ct_airwindows_param_bipolar:
     case ct_reson_res_extendable:
     case ct_chow_ratio:
     case ct_comp_attack_ms:

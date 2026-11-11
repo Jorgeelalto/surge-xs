@@ -2318,6 +2318,22 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
         }
     }
 
+    bool removedEffect = false;
+    for (auto &effect : fx)
+    {
+        if (effect.type.val.i == fxt_removed_airwindows)
+        {
+            effect.type.val.i = fxt_off;
+            removedEffect = true;
+        }
+    }
+    if (removedEffect)
+    {
+        storage->reportError("This patch used one or more Airwindows effects, which are no longer "
+                             "available. Those effect slots have been turned off.",
+                             "Unavailable Effects");
+    }
+
     if (scene[0].pbrange_up.val.i & 0xffffff00) // is outside range, it must have been saved
     {
         for (int sc = 0; sc < n_scenes; sc++)

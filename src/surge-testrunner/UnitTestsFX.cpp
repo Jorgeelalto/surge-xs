@@ -43,6 +43,8 @@ TEST_CASE("Every FX Is Created And Processes", "[fx]")
 {
     for (int i = fxt_off + 1; i < n_fx_types; ++i)
     {
+        if (i == fxt_removed_airwindows)
+            continue;
         DYNAMIC_SECTION("FX Testing " << i << " " << fx_type_names[i])
         {
             auto surge = Surge::Headless::createSurge(44100);
@@ -64,55 +66,6 @@ TEST_CASE("Every FX Is Created And Processes", "[fx]")
 
             surge->releaseNote(0, 60, 100);
             for (int s = 0; s < 20; ++s)
-            {
-                surge->process();
-            }
-        }
-    }
-}
-
-TEST_CASE("Airwindows Loud", "[fx]")
-{
-    SECTION("Make Loud")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-
-        for (int i = 0; i < 100; ++i)
-            surge->process();
-
-        auto *pt = &(surge->storage.getPatch().fx[0].type);
-        auto awv = 1.f * float(fxt_airwindows) / (pt->val_max.i - pt->val_min.i);
-
-        auto did = surge->idForParameter(pt);
-        surge->setParameter01(did, awv, false);
-
-        auto *pawt = &(surge->storage.getPatch().fx[0].p[0]);
-
-        for (int i = 0; i < 500; ++i)
-        {
-            pawt->val.i = 34;
-            surge->process();
-
-            float soo = 0.f;
-
-            INFO("Swapping Airwindows attempt " << i);
-            for (int s = 0; s < 100; ++s)
-            {
-                surge->process();
-                for (int p = 0; p < BLOCK_SIZE; ++p)
-                {
-                    soo += surge->output[0][p] + surge->output[1][p];
-                    REQUIRE(fabs(surge->output[0][p]) < 1e-5);
-                    REQUIRE(fabs(surge->output[1][p]) < 1e-5);
-                }
-            }
-
-            REQUIRE(fabs(soo) < 1e-5);
-
-            // Toggle to something which isn't 'loud'
-            pawt->val.i = rand() % 30 + 2;
-            for (int s = 0; s < 100; ++s)
             {
                 surge->process();
             }
@@ -1195,6 +1148,8 @@ TEST_CASE("Stopping Sound Clears Poisoned FX State", "[fx]") // See issue 8240
     // into a sustained full scale signal that no volume control can attenuate.
     for (int t = fxt_off + 1; t < n_fx_types; ++t)
     {
+        if (t == fxt_removed_airwindows)
+            continue;
         DYNAMIC_SECTION("FX " << t << " " << fx_type_names[t])
         {
             auto surge = Surge::Headless::createSurge(48000);

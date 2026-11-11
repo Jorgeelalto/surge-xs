@@ -406,11 +406,6 @@ void AboutScreen::resized()
 
         yp += lblvs;
 
-        addLabel("Airwindows open source effects by Chris Johnson, licensed under MIT license",
-                 600);
-
-        yp += lblvs;
-
         addLabel("OB-Xd filters by Vadim Filatov, licensed under GNU GPL v3 license", 600);
 
         yp += lblvs;

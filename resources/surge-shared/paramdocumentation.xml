@@ -472,18 +472,6 @@
   <param id="fx.param_12" type="13" help_url="#ring-modulator"/>
 
   <!-- special case FX params for Ring Modulator (14) -->
-  <param id="fx.param_1" type="14" help_url="#airwindows"/>
-  <param id="fx.param_2" type="14" help_url="#airwindows"/>
-  <param id="fx.param_3" type="14" help_url="#airwindows"/>
-  <param id="fx.param_4" type="14" help_url="#airwindows"/>
-  <param id="fx.param_5" type="14" help_url="#airwindows"/>
-  <param id="fx.param_6" type="14" help_url="#airwindows"/>
-  <param id="fx.param_7" type="14" help_url="#airwindows"/>
-  <param id="fx.param_8" type="14" help_url="#airwindows"/>
-  <param id="fx.param_9" type="14" help_url="#airwindows"/>
-  <param id="fx.param_10" type="14" help_url="#airwindows"/>
-  <param id="fx.param_11" type="14" help_url="#airwindows"/>
-  <param id="fx.param_12" type="14" help_url="#airwindows"/>
 
   <!-- special case FX params for Neuron (15) -->
   <param id="fx.param_1" type="15" help_url="#neuron"/>

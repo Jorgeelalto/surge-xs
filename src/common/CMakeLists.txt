@@ -1,7 +1,6 @@
 # vi:set sw=2 et:
 project(surge-common)
 
-surge_add_lib_subdirectory(airwindows)
 surge_add_lib_subdirectory(binn)
 
 # Toggle this to false to turn on superparasites for surge
@@ -169,8 +168,6 @@ add_library(${PROJECT_NAME}
   dsp/effects/VocoderEffect.h
   dsp/effects/WaveShaperEffect.cpp
   dsp/effects/WaveShaperEffect.h
-  dsp/effects/airwindows/AirWindowsEffect.cpp
-  dsp/effects/airwindows/AirWindowsEffect.h
   dsp/effects/chowdsp/CHOWEffect.cpp
   dsp/effects/chowdsp/CHOWEffect.h
   dsp/effects/chowdsp/ExciterEffect.cpp
@@ -352,7 +349,6 @@ target_link_libraries(${PROJECT_NAME}
   luajit-5.1
   pffft
   libzstd_static
-  surge::airwindows
   surge::binn
   surge::eurorack
 

@@ -107,6 +107,9 @@ void FxUserPreset::doPresetRescan(SurgeStorage *storage, bool forceRescan)
                 if (s->QueryIntAttribute("type", &t) != TIXML_SUCCESS)
                     goto badPreset;
 
+                if (t == fxt_removed_airwindows)
+                    continue;
+
                 preset.type = t;
                 preset.isFactory = f.second;
 
@@ -394,6 +397,15 @@ void FxUserPreset::saveFxIn(SurgeStorage *storage, FxStorage *fx, const std::str
 
 void FxUserPreset::loadPresetOnto(const Preset &p, SurgeStorage *storage, FxStorage *fxbuffer)
 {
+    if (p.type == fxt_removed_airwindows)
+    {
+        fxbuffer->type.val.i = fxt_off;
+        fxbuffer->user_data.clear();
+        storage->reportError("This preset uses an Airwindows effect, which is no longer available. "
+                             "The effect slot has been turned off.",
+                             "Unavailable Effects");
+        return;
+    }
     fxbuffer->type.val.i = p.type;
     // Special userdata bits.
     fxbuffer->user_data.clear();
@@ -726,13 +738,20 @@ void FxChainUserPreset::saveChainPresetIn(SurgeStorage *storage,
 void FxChainUserPreset::loadPresetOnto(const Preset &p, SurgeStorage *storage,
                                        FxStorage *fxbuffer[n_fx_per_chain])
 {
+    bool removedEffect = false;
     for (int slot = 0; slot < n_fx_per_chain; ++slot)
     {
         const auto &sd = p.slots[slot];
         FxStorage *buf = fxbuffer[slot];
 
-        buf->type.val.i = sd.type;
+        buf->type.val.i = sd.type == fxt_removed_airwindows ? fxt_off : sd.type;
         buf->user_data.clear();
+
+        if (sd.type == fxt_removed_airwindows)
+        {
+            removedEffect = true;
+            continue;
+        }
 
         if (!sd.filename.empty())
             buf->user_data.emplace("filename", ArbitraryBlockStorage::from_string(path_to_string(
@@ -774,6 +793,12 @@ void FxChainUserPreset::loadPresetOnto(const Preset &p, SurgeStorage *storage,
             if (p.streamingVersion != ff_revision)
                 t_fx->handleStreamingMismatches(p.streamingVersion, ff_revision);
             delete t_fx;
+        }
+        if (removedEffect)
+        {
+            storage->reportError("This FX chain used one or more Airwindows effects, which are no "
+                                 "longer available. Those effect slots have been turned off.",
+                                 "Unavailable Effects");
         }
     }
 }
