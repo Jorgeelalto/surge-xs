@@ -1413,11 +1413,11 @@ void SurgeGUIEditor::idle()
                      .modsources[ms_ctrl1 + i])
                     ->has_changed(0, true))
             {
-                gui_modsrc[ms_ctrl1 + i]->setValue(
-                    ((ControllerModulationSource *)synth->storage.getPatch()
-                         .scene[current_scene]
-                         .modsources[ms_ctrl1 + i])
-                        ->get_target01(0));
+                if (auto &button = gui_modsrc[ms_ctrl1 + i])
+                    button->setValue(((ControllerModulationSource *)synth->storage.getPatch()
+                                          .scene[current_scene]
+                                          .modsources[ms_ctrl1 + i])
+                                         ->get_target01(0));
             }
         }
     }
@@ -1655,10 +1655,9 @@ bool SurgeGUIEditor::isControlVisible(ControlGroup controlGroup, int controlGrou
 
 juce::Rectangle<int> SurgeGUIEditor::positionForModulationGrid(modsources entry)
 {
-    bool isMacro = isCustomController(entry);
     int gridX = Surge::GUI::ModulationGrid::getModulationGrid()->get(entry).x;
     int gridY = Surge::GUI::ModulationGrid::getModulationGrid()->get(entry).y;
-    int width = isMacro ? 90 : 72;
+    int width = isCustomController(entry) ? 180 : 120;
     auto skinCtrl = currentSkin->controlForUIID("controls.modulation.panel");
 
     if (!skinCtrl)
@@ -1672,12 +1671,7 @@ juce::Rectangle<int> SurgeGUIEditor::positionForModulationGrid(modsources entry)
         return juce::Rectangle<int>();
     }
 
-    auto r = juce::Rectangle<int>(skinCtrl->x, skinCtrl->y, width - 1, 14);
-
-    if (isMacro)
-    {
-        r = r.withTrimmedBottom(-8);
-    }
+    auto r = juce::Rectangle<int>(skinCtrl->x, skinCtrl->y, width - 1, 22);
 
     int offsetX = 23;
 
@@ -1752,7 +1746,7 @@ void SurgeGUIEditor::openOrRecreateEditor()
         modsources ms = (modsources)k;
         auto e = Surge::GUI::ModulationGrid::getModulationGrid()->get(ms);
 
-        if (e.isPrimary)
+        if (e.isPrimary && e.x >= 0)
         {
             int state = 0;
             auto r = positionForModulationGrid(ms);
@@ -5896,7 +5890,8 @@ void SurgeGUIEditor::lfoShapeChanged(int prior, int curr)
     lfoNameLabel->setText(modname.c_str());
     lfoNameLabel->repaint();
 
-    setupAlternates(modsource_editor[current_scene]);
+    if (gui_modsrc[modsource_editor[current_scene]])
+        setupAlternates(modsource_editor[current_scene]);
     // And now we have dynamic labels really anything
     auto modol =
         dynamic_cast<Surge::Overlays::ModulationEditor *>(getOverlayIfOpen(MODULATION_EDITOR));

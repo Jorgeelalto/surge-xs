@@ -34,6 +34,23 @@
 
 using namespace Surge::Test;
 
+TEST_CASE("Scene LFO button names", "[mod]")
+{
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+
+    auto &storage = surge->storage;
+    storage.getPatch().scene[0].lfo[ms_slfo1 - ms_lfo1].shape.val.i = lt_sine;
+    storage.getPatch().scene[1].lfo[ms_slfo2 - ms_lfo1].shape.val.i = lt_sine;
+
+    REQUIRE(ModulatorName::modulatorName(&storage, ms_slfo1, true, 0) == "Scene LFO 1");
+    REQUIRE(ModulatorName::modulatorName(&storage, ms_slfo2, true, 0, 1) == "B Scene LFO 2");
+    REQUIRE(ModulatorName::modulatorName(&storage, ms_slfo1, false, 0) == "Scene LFO 1");
+
+    storage.getPatch().scene[0].lfo[ms_slfo1 - ms_lfo1].shape.val.i = lt_stepseq;
+    REQUIRE(ModulatorName::modulatorName(&storage, ms_slfo1, true, 0) == "Scene SEQ 1");
+}
+
 TEST_CASE("ADSR Envelope Behaviour", "[mod]")
 {
 

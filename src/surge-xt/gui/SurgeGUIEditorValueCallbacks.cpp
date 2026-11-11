@@ -4145,8 +4145,11 @@ void SurgeGUIEditor::valueChanged(Surge::GUI::IComponentTagValue *control)
                         strxcpy(lbl, p->get_name(), CUSTOM_CONTROLLER_LABEL_SIZE - 1);
                         synth->storage.getPatch()
                             .CustomControllerLabel[ccid][CUSTOM_CONTROLLER_LABEL_SIZE - 1] = 0;
-                        gui_modsrc[modsource]->setCurrentModLabel(lbl);
-                        gui_modsrc[modsource]->repaint();
+                        if (auto &button = gui_modsrc[modsource])
+                        {
+                            button->setCurrentModLabel(lbl);
+                            button->repaint();
+                        }
                     }
                 }
             }

@@ -326,7 +326,10 @@ void ModulationSourceButton::paint(juce::Graphics &g)
 
     if (isLFO())
     {
-        auto arrSze = getLocalBounds().withLeft(getLocalBounds().getRight() - 14).withHeight(16);
+        auto arrSze = getLocalBounds()
+                          .withLeft(getLocalBounds().getRight() - 14)
+                          .withHeight(16)
+                          .translated(0, (getHeight() - 16) / 2);
         float dy = (state >= 4) ? -16 : 0;
 
         juce::Graphics::ScopedSaveState gs(g);
@@ -492,7 +495,7 @@ void ModulationSourceButton::mouseDown(const juce::MouseEvent &event)
 
     if (isLFO())
     {
-        auto arrSze = getLocalBounds().withLeft(getLocalBounds().getRight() - 14).withHeight(16);
+        auto arrSze = getLocalBounds().withLeft(getLocalBounds().getRight() - 14);
 
         if (arrSze.contains(event.position.toInt()))
         {

@@ -27,7 +27,8 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 - [ ] Remove patch functionality.
 - [ ] Simplify FX chain. Hardcode 3 serial FXs (chorus, delay and reverb).
 - [ ] Simplify filter routing, only one filter.
-- [ ] Simplify modulations (TBD).
+- [x] Simplify modulation source panel.
+- [ ] Simplify LFOs (TBD).
 - [ ] Reorder GUI items. Make space for visualizations.
 - [ ] Add filter shape visualization.
 

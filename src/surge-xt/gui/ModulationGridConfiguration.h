@@ -34,42 +34,32 @@ struct ModulationGrid : juce::DeletedAtShutdown
 {
     ModulationGrid()
     {
-        add(ms_original, 0, 0);
+        // Negative coordinates keep non-panel sources addressable without displaying them.
+        for (int i = 0; i < n_modsources; ++i)
+            add(static_cast<modsources>(i), -1, -1);
 
-        add(ms_velocity, 0, 3);
-        add(ms_keytrack, 6, 7);
-        add(ms_polyaftertouch, 2, 3);
-        add(ms_aftertouch, 3, 3);
-        add(ms_pitchbend, 4, 3);
-        add(ms_modwheel, 5, 3);
-
-        for (int i = ms_ctrl1; i <= ms_ctrl8; ++i)
+        for (int i = ms_ctrl1; i <= ms_ctrl4; ++i)
         {
             add((modsources)i, (int)i - ms_ctrl1, 0);
         }
 
-        add(ms_ampeg, 7, 5);
-        add(ms_filtereg, 6, 5);
-
-        for (int i = ms_lfo1; i <= ms_lfo6; ++i)
+        add(ms_ampeg, 0, 3);
+        add(ms_filtereg, 1, 3);
+        for (int i = ms_lfo1; i <= ms_lfo2; ++i)
         {
-            add((modsources)i, (int)i - ms_lfo1, 5);
+            add((modsources)i, (int)i - ms_lfo1 + 2, 3);
         }
-        for (int i = ms_slfo1; i <= ms_slfo6; ++i)
+        for (int i = ms_slfo1; i <= ms_slfo2; ++i)
         {
-            add((modsources)i, (int)i - ms_slfo1, 7);
+            add((modsources)i, (int)i - ms_slfo1 + 4, 3);
         }
 
-        add(ms_timbre, 9, 3);
-        add(ms_releasevelocity, 1, 3);
-        add(ms_random_bipolar, 8, 5, {ms_random_unipolar});
-        add(ms_alternate_bipolar, 9, 5, {ms_alternate_unipolar});
-        add(ms_breath, 6, 3);
-        add(ms_sustain, 8, 3);
-        add(ms_expression, 7, 3);
-        add(ms_lowest_key, 7, 7);
-        add(ms_highest_key, 8, 7);
-        add(ms_latest_key, 9, 7);
+        add(ms_random_bipolar, 0, 6, {ms_random_unipolar});
+        add(ms_velocity, 1, 6);
+        add(ms_keytrack, 2, 6);
+        add(ms_polyaftertouch, 3, 6);
+        add(ms_expression, 4, 6);
+        add(ms_modwheel, 5, 6);
     }
 
     // This is only called at dll shutdown basically

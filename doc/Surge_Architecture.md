@@ -43,6 +43,10 @@ Wavetable file drops are disabled because no wavetable oscillator is available.
 Legacy oscillator IDs and some unused GUI definitions remain for patch and interface
 compatibility; the other oscillator DSP implementations are not built.
 
+The modulation source panel shows four macros, two envelopes, two voice LFOs, two scene
+LFOs, and six other sources. Other modulation sources remain available to the engine and
+modulation list; the panel layout does not remove existing routings.
+
 ## Voices and MPE
 
 Voice allocation and stealing support multiple polyphony modes and MPE. Voices are

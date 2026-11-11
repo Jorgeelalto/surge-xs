@@ -44,12 +44,12 @@ std::string modulatorName(const SurgeStorage *s, int i, bool button, int current
         auto useScene = forScene >= 0 ? forScene : current_scene;
         auto *lfodata = &(s->getPatch().scene[useScene].lfo[i - ms_lfo1]);
 
-        std::string sceneL = "Scene", shortsceneL = "S-";
+        std::string sceneL = "Scene", shortsceneL = "Scene ";
 
         if (forScene >= 0)
         {
             sceneL = fmt::format("Scene {:c}", 'A' + forScene);
-            shortsceneL = fmt::format("{:c} S-", 'A' + forScene);
+            shortsceneL = fmt::format("{:c} Scene ", 'A' + forScene);
         }
 
         std::string txt;
