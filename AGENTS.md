@@ -1,6 +1,7 @@
 # Repository guidance
 
 - Do not git add, commit or push without asking first.
+- Do not run a test build unless I ask you to.
 
 ## Primary references
 
