@@ -104,6 +104,7 @@ add_library(${PROJECT_NAME}
   WAVFileSupport.cpp
   dsp/Effect.cpp
   dsp/Effect.h
+  dsp/FixedFxSceneDelay.h
   dsp/Oscillator.cpp
   dsp/Oscillator.h
   dsp/QuadFilterChain.cpp
@@ -121,6 +122,8 @@ add_library(${PROJECT_NAME}
   dsp/WtGenService.h
   dsp/effects/BBDEnsembleEffect.cpp
   dsp/effects/BBDEnsembleEffect.h
+  dsp/effects/ConditionerEffect.cpp
+  dsp/effects/ConditionerEffect.h
   dsp/effects/DelayEffect.cpp
   dsp/effects/DelayEffect.h
   dsp/effects/ModControl.h

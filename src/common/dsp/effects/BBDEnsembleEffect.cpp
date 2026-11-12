@@ -160,7 +160,7 @@ void BBDEnsembleEffect::setvars(bool init)
         sincInputFilter.coeff_LP(sincInputFilter.calc_omega_from_Hz(20000.0), 0.7071);
 
         width.set_target(0.f);
-        mix.set_target(1.f);
+        mix.set_target(fxdata->p[ens_mix].val.f);
 
         width.instantize();
         mix.instantize();
@@ -535,7 +535,7 @@ void BBDEnsembleEffect::init_ctrltypes()
     fxdata->p[ens_width].posy_offset = 9;
     fxdata->p[ens_mix].set_name("Mix");
     fxdata->p[ens_mix].set_type(ct_percent);
-    fxdata->p[ens_mix].val_default.f = 1.f;
+    fxdata->p[ens_mix].val_default.f = 0.f;
     fxdata->p[ens_mix].posy_offset = 9;
 }
 
@@ -559,7 +559,7 @@ void BBDEnsembleEffect::init_default_values()
     fxdata->p[ens_output_filter].val.f = defaultFilterCut;
     fxdata->p[ens_output_filter].deactivated = false;
     fxdata->p[ens_width].val.f = 1.f;
-    fxdata->p[ens_mix].val.f = 1.f;
+    fxdata->p[ens_mix].val.f = 0.f;
 }
 
 void BBDEnsembleEffect::handleStreamingMismatches(int streamingRevision,

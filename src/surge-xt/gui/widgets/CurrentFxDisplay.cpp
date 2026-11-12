@@ -5,6 +5,8 @@
 #include "SkinModel.h"
 #include "SurgeGUIEditor.h"
 #include "SurgeGUIEditorTags.h"
+#include "VuMeter.h"
+#include "dsp/effects/ConditionerEffect.h"
 
 namespace
 {
@@ -21,7 +23,6 @@ CurrentFxDisplay::CurrentFxDisplay(SurgeGUIEditor *e)
     editor_ = e;
     storage = e->getStorage();
 }
-
 CurrentFxDisplay::~CurrentFxDisplay() {}
 
 void CurrentFxDisplay::updateCurrentFx(int current_fx)
@@ -30,6 +31,26 @@ void CurrentFxDisplay::updateCurrentFx(int current_fx)
     current_fx_ = current_fx;
     effect_ = editor_->synth->fx[current_fx].get();
     defaultLayout();
+}
+
+void CurrentFxDisplay::refreshGainReductionMeter()
+{
+    if (!gainReductionMeter_)
+        return;
+
+    float value;
+    {
+        std::lock_guard<std::mutex> g(editor_->synth->fxSpawnMutex);
+        auto *conditioner = dynamic_cast<ConditionerEffect *>(editor_->synth->fx[current_fx_].get());
+        if (!conditioner)
+            return;
+        value = conditioner->gainReduction.load(std::memory_order_relaxed);
+    }
+    if (value != gainReductionMeter_->getValue())
+    {
+        gainReductionMeter_->setValue(value);
+        gainReductionMeter_->repaint();
+    }
 }
 
 void CurrentFxDisplay::defaultLayout()
@@ -44,9 +65,6 @@ void CurrentFxDisplay::defaultLayout()
     // This is kinda dumb, but we have to provide an absolute param index number
     // to layoutComponentForSkin, so figure it out here.
     int i = 0;
-    // IDs of others that we need to lay out.
-    int fx_type = -1;
-
     std::vector<Parameter *>::iterator iter;
     for (iter = editor_->synth->storage.getPatch().param_ptr.begin();
          iter != editor_->synth->storage.getPatch().param_ptr.end(); iter++, i++)
@@ -54,7 +72,6 @@ void CurrentFxDisplay::defaultLayout()
         Parameter *p = *iter;
         if (strcmp(p->ui_identifier, "fx.type") == 0)
         {
-            fx_type = i;
             continue;
         }
 
@@ -92,12 +109,15 @@ void CurrentFxDisplay::defaultLayout()
     };
 
     // Start placing the various components.
-    layoutJogFx();
     layoutFxSelector();
-    layoutFxPresetLabel();
-    // FX menu. This one's a little weird: the construction is done in
-    // layoutComponentForSkin.
-    makeParameter(fx_type);
+    auto headingCtrl = currentSkin->getOrCreateControlForConnector("fx.type");
+    if (!effectHeading_)
+        effectHeading_ = std::make_unique<juce::Label>("Effect");
+    effectHeading_->setText(fx_type_names[fx.type.val.i], juce::dontSendNotification);
+    effectHeading_->setBounds(headingCtrl->getRect());
+    effectHeading_->setColour(juce::Label::textColourId,
+                              currentSkin->getColor(Colors::Effect::Preset::Name));
+    editor_->addAndMakeVisibleWithTracking(editor_->frame.get(), *effectHeading_);
 
     // Now the actual FX labels and parameter.
     if (effect_)
@@ -142,6 +162,25 @@ void CurrentFxDisplay::defaultLayout()
             }
         }
     }
+
+    if (auto *conditioner = dynamic_cast<ConditionerEffect *>(effect_))
+    {
+        if (!gainReductionMeter_)
+            gainReductionMeter_ = std::make_unique<VuMeter>();
+        constexpr int gainReductionMeterIndex = 1;
+        auto bounds = label_rect.translated(
+            6, yofs * ConditionerEffect::vu_ypos(gainReductionMeterIndex) - 14);
+        gainReductionMeter_->setBounds(bounds);
+        gainReductionMeter_->setSkin(currentSkin, editor_->bitmapStore);
+        gainReductionMeter_->setType(ConditionerEffect::vu_type(gainReductionMeterIndex));
+        gainReductionMeter_->setValue(conditioner->gainReduction.load(std::memory_order_relaxed));
+        gainReductionMeter_->setInterceptsMouseClicks(false, false);
+        editor_->addAndMakeVisibleWithTracking(this, *gainReductionMeter_);
+    }
+    else
+    {
+        gainReductionMeter_.reset();
+    }
 }
 
 void CurrentFxDisplay::layoutFxSelector()
@@ -158,7 +197,6 @@ void CurrentFxDisplay::layoutFxSelector()
     editor_->effectChooser->setBounds(skinCtrl->getRect());
     editor_->effectChooser->setTag(tag_fx_select);
     editor_->effectChooser->setSkin(currentSkin, editor_->bitmapStore);
-    editor_->effectChooser->setBackgroundDrawable(editor_->bitmapStore->getImage(IDB_FX_GRID));
     editor_->effectChooser->setCurrentEffect(current_fx_);
 
     for (int fxi = 0; fxi < n_fx_slots; fxi++)

@@ -1,5 +1,9 @@
 # Adding an effect
 
+Surge XS currently uses a fixed Ensemble → Delay → Reverb → Conditioner chain. Adding a
+selectable effect or changing that chain requires revisiting its routing,
+editor, and patch compatibility as well as the registration steps below.
+
 This guide uses `MyEffect` as an example.
 
 1. Create `src/common/dsp/effects/MyEffect.h` and `MyEffect.cpp`. See Delay for an

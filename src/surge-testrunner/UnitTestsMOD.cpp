@@ -1516,9 +1516,9 @@ TEST_CASE("Enumerate Modulations From A Source", "[mod]")
         auto surge = Surge::Headless::createSurge(44100);
         REQUIRE(surge);
 
-        Surge::Test::setFX(surge, 0, fxt_delay);
+        surge->process();
 
-        auto fxp = surge->storage.getPatch().fx[0].p[2].id;
+        auto fxp = surge->storage.getPatch().fx[fxslot_global2].p[2].id;
 
         // A scene LFO modulating an FX parameter is the case which needs source_scene, see #2285
         REQUIRE(surge->setModDepth01(fxp, ms_slfo1, 1, 3, 0.1));

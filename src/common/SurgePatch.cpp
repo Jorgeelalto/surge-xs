@@ -20,6 +20,7 @@
  * https://github.com/surge-synthesizer/surge
  */
 
+#include <algorithm>
 #include <iostream>
 #include <list>
 #include <locale>
@@ -1014,6 +1015,69 @@ void SurgePatch::init_default_values()
 
 SurgePatch::~SurgePatch() { free(patchptr); }
 
+void SurgePatch::resetFixedFx()
+{
+    fixedFxWasReset = true;
+    modulation_global.erase(
+        std::remove_if(modulation_global.begin(), modulation_global.end(),
+                       [this](const ModulationRouting &routing) {
+                           if (routing.destination_id < 0 ||
+                               routing.destination_id >= static_cast<int>(param_ptr.size()))
+                               return false;
+                           auto *p = param_ptr[routing.destination_id];
+                           if (p->ctrlgroup == cg_FX)
+                               return true;
+                           for (auto slot : {fxslot_send1, fxslot_send2, fxslot_send3, fxslot_send4})
+                               if (p == &fx[slot].return_level)
+                                   return true;
+                           return false;
+                       }),
+        modulation_global.end());
+
+    for (auto &sc : scene)
+    {
+        auto isSendDestination = [&sc](const ModulationRouting &routing) {
+            for (const auto &send : sc.send_level)
+                if (routing.destination_id == send.param_id_in_scene)
+                    return true;
+            return false;
+        };
+        for (auto *routings : {&sc.modulation_scene, &sc.modulation_voice})
+            routings->erase(std::remove_if(routings->begin(), routings->end(), isSendDestination),
+                            routings->end());
+    }
+
+    fx_disable.val.i = 0;
+    fx_bypass.val.i = fxb_all_fx;
+    for (int slot = 0; slot < n_fx_slots; ++slot)
+    {
+        auto &effect = fx[slot];
+        effect.type.val.i = fixedFxTypeForSlot(slot);
+        effect.user_data.clear();
+        for (auto &p : effect.p)
+        {
+            p.clear_flags();
+            p.set_type(ct_none);
+            p.val.i = 0;
+        }
+        if (effect.type.val.i != fxt_off)
+        {
+            std::unique_ptr<Effect> instance(
+                spawn_effect(effect.type.val.i, storage, &effect, nullptr));
+            if (instance)
+            {
+                instance->init_ctrltypes();
+                instance->init_default_values();
+            }
+            else
+            {
+                storage->reportError("A required effect could not be initialized.",
+                                     "FX Initialization Error");
+            }
+        }
+    }
+}
+
 void SurgePatch::copy_scenedata(pdata *d, pdata *dUnmod, int scene)
 {
 
@@ -1137,12 +1201,14 @@ void SurgePatch::update_controls(
                 if (t_fx)
                 {
                     t_fx->init_ctrltypes();
-                    t_fx->handleStreamingMismatches(streamingRevision,
+                    t_fx->handleStreamingMismatches(fixedFxWasReset ? currentSynthStreamingRevision
+                                                                    : streamingRevision,
                                                     currentSynthStreamingRevision);
                     delete t_fx;
                 }
             }
         }
+        fixedFxWasReset = false;
     }
 }
 
@@ -1641,6 +1707,8 @@ unsigned int SurgePatch::load_arbitrary_block_storage(const void *data, std::siz
         // Try deserializing FX.
         if (std::regex_match(key, m, fx_regex))
         {
+            if (fixedFxWasReset)
+                continue;
             int id = -1;
             try
             {
@@ -1788,6 +1856,9 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
 
     int revision = 0;
     patch->QueryIntAttribute("revision", &revision);
+    int fixedFxFormat = 0;
+    patch->QueryIntAttribute("xs_fixed_fx", &fixedFxFormat);
+    fixedFxWasReset = false;
     streamingRevision = revision;
     currentSynthStreamingRevision = ff_revision;
 
@@ -2299,21 +2370,25 @@ void SurgePatch::load_xml(const void *data, int datasize, bool is_preset)
                              "Unavailable Waveshapers");
     }
 
-    bool removedEffect = false;
-    for (auto &effect : fx)
+    bool invalidFixedFx = false;
+    if (fixedFxFormat == 2)
     {
-        if (!isAvailableFxType(effect.type.val.i))
+        for (int slot = 0; slot < n_fx_slots; ++slot)
         {
-            effect.type.val.i = fxt_off;
-            removedEffect = true;
+            if (fx[slot].type.val.i != fixedFxTypeForSlot(slot))
+                invalidFixedFx = true;
         }
     }
-    if (removedEffect)
+    if (fixedFxFormat != 2 || invalidFixedFx)
     {
-        storage->reportError("This patch used one or more effects which are no longer "
-                             "available. Those effect slots have been turned off.",
-                             "Unavailable Effects");
+        resetFixedFx();
+        if (invalidFixedFx || (fixedFxFormat != 0 && fixedFxFormat != 1))
+            storage->reportError(
+                "The fixed effect chain in this patch is invalid and has been reset.",
+                "FX Patch Error");
     }
+    fx_disable.val.i = 0;
+    fx_bypass.val.i = fxb_all_fx;
 
     if (scene[0].pbrange_up.val.i & 0xffffff00) // is outside range, it must have been saved
     {
@@ -3839,6 +3914,7 @@ unsigned int SurgePatch::save_xml(void **data) // allocates mem, must be freed b
     // doc.SetCondenseWhiteSpace(false);
     TiXmlElement patch("patch");
     patch.SetAttribute("revision", ff_revision);
+    patch.SetAttribute("xs_fixed_fx", 2);
 
     TiXmlElement meta("meta");
     meta.SetAttribute("name", this->name);

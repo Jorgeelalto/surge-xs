@@ -24,6 +24,7 @@
 #include "BBDEnsembleEffect.h"
 #endif
 
+#include "ConditionerEffect.h"
 #include "DelayEffect.h"
 #include "Reverb1Effect.h"
 
@@ -39,6 +40,8 @@ Effect *spawn_effect(int id, SurgeStorage *storage, FxStorage *fxdata, pdata *pd
         return new DelayEffect(storage, fxdata, pd);
     case fxt_reverb:
         return new Reverb1Effect(storage, fxdata, pd);
+    case fxt_conditioner:
+        return new ConditionerEffect(storage, fxdata, pd);
     case fxt_ensemble:
 #if defined(_M_ARM64EC)
         return nullptr;

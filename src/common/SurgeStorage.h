@@ -459,14 +459,29 @@ enum fx_type
     n_fx_types,
 };
 
+static constexpr std::array<int, 4> fixedFxSlots{fxslot_global1, fxslot_global2, fxslot_global3,
+                                                 fxslot_global4};
+static constexpr std::array<int, 4> fixedFxTypes{fxt_ensemble, fxt_delay, fxt_reverb,
+                                                 fxt_conditioner};
+static constexpr int fixedFxLatencySamples = 64;
+
+inline int fixedFxTypeForSlot(int slot)
+{
+    for (size_t i = 0; i < fixedFxSlots.size(); ++i)
+        if (fixedFxSlots[i] == slot)
+            return fixedFxTypes[i];
+    return fxt_off;
+}
+
 inline bool isAvailableFxType(int type)
 {
-    return type == fxt_off || type == fxt_delay || type == fxt_reverb || type == fxt_ensemble;
+    return type == fxt_off || type == fxt_delay || type == fxt_reverb || type == fxt_ensemble ||
+           type == fxt_conditioner;
 }
 
 const char fx_type_names[n_fx_types][32] = {"Off",
                                             "Delay",
-                                            "Reverb 1",
+                                            "Reverb",
                                             "Phaser",
                                             "Rotary Speaker",
                                             "Distortion",
@@ -498,12 +513,17 @@ const char fx_type_names[n_fx_types][32] = {"Off",
                                             "Convolution"};
 
 const char fx_type_shortnames[n_fx_types][16] = {
-    "Off",          "Delay",      "Reverb 1",      "Phaser",        "Rotary",     "Distortion",
+    "Off",          "Delay",      "Reverb",        "Phaser",        "Rotary",     "Distortion",
     "EQ",           "Freq Shift", "Conditioner",   "Chorus",        "Vocoder",    "Reverb 2",
     "Flanger",      "Ring Mod",   "Unavailable",   "Neuron",        "Graphic EQ", "Resonator",
     "CHOW",         "Exciter",    "Ensemble",      "Combulator",    "Nimbus",     "Tape",
     "Treemonster",  "Waveshaper", "Mid-Side Tool", "Spring Reverb", "Bonsai",     "Audio In",
     "Floaty Delay", "Convolution"};
+
+inline const char *fxPresetDirectoryName(int type)
+{
+    return type == fxt_reverb ? "Reverb 1" : fx_type_shortnames[type];
+}
 
 const char fx_type_acronyms[n_fx_types][8] = {
     "OFF", "DLY",  "RV1", "PH", "ROT", "DIST", "EQ",  "FRQ", "DYN", "CH",  "VOC",
@@ -1328,6 +1348,8 @@ class SurgePatch
     SurgePatch(SurgeStorage *storage);
     ~SurgePatch();
     void init_default_values();
+    /** Reset the fixed effects and remove legacy FX modulation routings. */
+    void resetFixedFx();
     void update_controls(bool init = false, void *init_osc = 0, bool from_stream = false);
     void do_morph();
     void copy_scenedata(pdata *, pdata *, int scene);
@@ -1419,6 +1441,7 @@ class SurgePatch
     char LFOBankLabel[n_scenes][n_lfos][max_lfo_indices][CUSTOM_CONTROLLER_LABEL_SIZE];
 
     int streamingRevision;
+    bool fixedFxWasReset{false};
     int currentSynthStreamingRevision;
 
     /*

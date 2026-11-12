@@ -111,6 +111,7 @@ void DelayEffect::init_ctrltypes()
     fxdata->p[dly_width].posy_offset = 5;
 
     configureControlsFromFXMetadata();
+    fxdata->p[dly_mix].val_default.f = 0.f;
 }
 
 void DelayEffect::init_default_values()
@@ -136,7 +137,7 @@ void DelayEffect::init_default_values()
     fxdata->p[dly_mod_depth].val.f = 0.f;
     fxdata->p[dly_mod_depth].set_extend_range(false);
     fxdata->p[dly_input_channel].val.f = 0.f;
-    fxdata->p[dly_mix].val.f = 0.5f;
+    fxdata->p[dly_mix].val.f = 0.f;
     fxdata->p[dly_width].val.f = 0.f;
 }
 

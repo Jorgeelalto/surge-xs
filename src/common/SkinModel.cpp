@@ -483,7 +483,7 @@ Connector release = Connector("aeg.release", 60, 34).asVertical().asWhite().inPa
 namespace FX
 {
 Connector fx_selector =
-    Connector("fx.selector", 760, 74, 139, 57, Components::Custom, Connector::FX_SELECTOR);
+    Connector("fx.selector", 760, 74, 139, 112, Components::Custom, Connector::FX_SELECTOR);
 Connector fx_type = Connector("fx.type", 765, 194, 133, 18, Components::FxMenu);
 
 Connector fx_preset =

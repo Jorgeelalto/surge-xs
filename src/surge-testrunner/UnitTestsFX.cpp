@@ -34,201 +34,274 @@
 
 #include "UnitTestUtilities.h"
 #include "DelayEffect.h"
+#include "Reverb1Effect.h"
+#include "BBDEnsembleEffect.h"
+#include "ConditionerEffect.h"
+#include "dsp/FixedFxSceneDelay.h"
 
 using namespace Surge::Test;
 
-TEST_CASE("Every FX Is Created And Processes", "[fx]")
+TEST_CASE("Fixed FX chain initializes and stays dry", "[fx][fixed-fx]")
 {
-    for (int i = fxt_off + 1; i < n_fx_types; ++i)
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    surge->process();
+    auto &patch = surge->storage.getPatch();
+
+    for (int slot = 0; slot < n_fx_slots; ++slot)
     {
-        if (!isAvailableFxType(i))
+        REQUIRE(patch.fx[slot].type.val.i == fixedFxTypeForSlot(slot));
+#if defined(_M_ARM64EC)
+        const bool available = fixedFxTypeForSlot(slot) != fxt_off && slot != fxslot_global1;
+#else
+        const bool available = fixedFxTypeForSlot(slot) != fxt_off;
+#endif
+        REQUIRE(static_cast<bool>(surge->fx[slot]) == available);
+    }
+
+#if !defined(_M_ARM64EC)
+    REQUIRE(patch.fx[fxslot_global1].p[BBDEnsembleEffect::ens_mix].val.f == 0.f);
+#endif
+    REQUIRE(patch.fx[fxslot_global2].p[DelayEffect::dly_mix].val.f == 0.f);
+    REQUIRE(patch.fx[fxslot_global3].p[Reverb1Effect::rev1_mix].val.f == 0.f);
+    REQUIRE(patch.fx[fxslot_global4].p[ConditionerEffect::cond_mix].val.f == 0.f);
+
+    for (auto slot : fixedFxSlots)
+    {
+        if (!surge->fx[slot])
             continue;
-        DYNAMIC_SECTION("FX Testing " << i << " " << fx_type_names[i])
+        if (slot == fxslot_global4)
+            continue;
+        float left alignas(16)[BLOCK_SIZE], right alignas(16)[BLOCK_SIZE];
+        std::fill(left, left + BLOCK_SIZE, 0.25f);
+        std::fill(right, right + BLOCK_SIZE, -0.5f);
+        surge->fx[slot]->process(left, right);
+        for (int i = 0; i < BLOCK_SIZE; ++i)
         {
-            auto surge = Surge::Headless::createSurge(44100);
-            REQUIRE(surge);
+            REQUIRE(left[i] == Approx(0.25f).margin(1.e-5f));
+            REQUIRE(right[i] == Approx(-0.5f).margin(1.e-5f));
+        }
+    }
 
-            for (int i = 0; i < 100; ++i)
-                surge->process();
-            auto *pt = &(surge->storage.getPatch().fx[0].type);
-            auto awv = 1.f * i / (pt->val_max.i - pt->val_min.i);
+    for (int slot = 0; slot < n_fx_slots; ++slot)
+    {
+        auto &type = patch.fx[slot].type;
+        surge->setParameter01(surge->idForParameter(&type), 1.f, false);
+        REQUIRE(type.val.i == fixedFxTypeForSlot(slot));
+    }
+}
 
-            auto did = surge->idForParameter(pt);
-            surge->setParameter01(did, awv, false);
-
-            surge->playNote(0, 60, 100, 0, -1);
-            for (int s = 0; s < 100; ++s)
+TEST_CASE("Fixed FX chain processes in order after the scene mix", "[fx][fixed-fx]")
+{
+    struct Probe : Effect
+    {
+        Probe(SurgeStorage *storage, FxStorage *data, pdata *pd, int slot, std::vector<int> &calls,
+              std::vector<float> &inputs, std::vector<bool> &activeStates)
+            : Effect(storage, data, pd), slot(slot), calls(calls), inputs(inputs),
+              activeStates(activeStates)
+        {
+        }
+        bool process_ringout(float *left, float *right, bool active) override
+        {
+            calls.push_back(slot);
+            inputs.push_back(left[0]);
+            activeStates.push_back(active);
+            for (int i = 0; i < BLOCK_SIZE; ++i)
             {
-                surge->process();
+                left[i] += 0.125f;
+                right[i] += 0.125f;
             }
+            return true;
+        }
+        int slot;
+        std::vector<int> &calls;
+        std::vector<float> &inputs;
+        std::vector<bool> &activeStates;
+    };
 
-            surge->releaseNote(0, 60, 100);
-            for (int s = 0; s < 20; ++s)
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    surge->process();
+    auto &patch = surge->storage.getPatch();
+    patch.scenemode.val.i = sm_dual;
+    surge->playNote(0, 60, 100, 0, -1);
+    for (int i = 0; i < 20; ++i)
+        surge->process();
+    std::vector<int> calls;
+    std::vector<float> inputs;
+    std::vector<bool> activeStates;
+    auto sceneA = surge->storage.scenesOutputData.getSceneData(0, 0);
+    auto sceneB = surge->storage.scenesOutputData.getSceneData(1, 0);
+    surge->storage.sceneHardclipMode[0] = SurgeStorage::BYPASS_HARDCLIP;
+    surge->storage.sceneHardclipMode[1] = SurgeStorage::BYPASS_HARDCLIP;
+    for (int slot = 0; slot < n_fx_slots; ++slot)
+        surge->fx[slot] = std::make_unique<Probe>(&surge->storage, &patch.fx[slot],
+                                                  patch.globaldata, slot, calls, inputs, activeStates);
+    patch.fx_bypass.val.i = fxb_no_fx;
+    patch.fx_disable.val.i = -1;
+    surge->process();
+    REQUIRE(calls == std::vector<int>(fixedFxSlots.begin(), fixedFxSlots.end()));
+    REQUIRE(inputs[0] == Approx(sceneA.get()[0] + sceneB.get()[0]).margin(1.e-6f));
+    REQUIRE(inputs[1] == Approx(inputs[0] + 0.125f));
+    REQUIRE(inputs[2] == Approx(inputs[1] + 0.125f));
+    REQUIRE(inputs[3] == Approx(inputs[2] + 0.125f));
+    REQUIRE(activeStates[1]);
+    REQUIRE(activeStates[2]);
+    REQUIRE(activeStates[3]);
+}
+
+TEST_CASE("Conditioner delays dry and wet signals equally", "[fx][fixed-fx]")
+{
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    surge->process();
+    auto &patch = surge->storage.getPatch();
+    auto *effect = surge->fx[fxslot_global4].get();
+    REQUIRE(effect);
+
+    for (float wet : {0.f, 1.f})
+    {
+        patch.fx[fxslot_global4].p[ConditionerEffect::cond_mix].val.f = wet;
+        patch.copy_globaldata(patch.globaldata);
+        effect->init();
+        float left alignas(16)[BLOCK_SIZE], right alignas(16)[BLOCK_SIZE];
+        for (int block = 0; block < 10; ++block)
+        {
+            std::fill(left, left + BLOCK_SIZE, 0.f);
+            std::fill(right, right + BLOCK_SIZE, 0.f);
+            effect->process(left, right);
+        }
+
+        for (int sample = 0; sample < fixedFxLatencySamples + BLOCK_SIZE; sample += BLOCK_SIZE)
+        {
+            std::fill(left, left + BLOCK_SIZE, 0.f);
+            std::fill(right, right + BLOCK_SIZE, 0.f);
+            if (sample == 0)
             {
-                surge->process();
+                left[0] = 0.25f;
+                right[0] = -0.5f;
+            }
+            effect->process(left, right);
+            for (int i = 0; i < BLOCK_SIZE; ++i)
+            {
+                if (sample + i == fixedFxLatencySamples)
+                {
+                    if (wet == 0.f)
+                    {
+                        REQUIRE(left[i] == Approx(0.25f).margin(1.e-6f));
+                        REQUIRE(right[i] == Approx(-0.5f).margin(1.e-6f));
+                    }
+                    else
+                    {
+                        REQUIRE(std::abs(left[i]) > 0.01f);
+                        REQUIRE(std::abs(right[i]) > 0.01f);
+                    }
+                }
+                else if (sample + i < fixedFxLatencySamples)
+                {
+                    REQUIRE(left[i] == Approx(0.f).margin(1.e-6f));
+                    REQUIRE(right[i] == Approx(0.f).margin(1.e-6f));
+                }
             }
         }
     }
 }
 
-TEST_CASE("Move FX With Assigned Modulation", "[fx]")
+TEST_CASE("Conditioner publishes limiter gain reduction", "[fx][fixed-fx]")
 {
-    auto step = [](auto surge) {
-        for (int i = 0; i < 10; ++i)
-            surge->process();
-    };
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    surge->process();
+    auto *effect = dynamic_cast<ConditionerEffect *>(surge->fx[fxslot_global4].get());
+    REQUIRE(effect);
+    auto &patch = surge->storage.getPatch();
+    const auto &threshold = patch.fx[fxslot_global4].p[ConditionerEffect::cond_threshold];
+    patch.globaldata[threshold.id].f = -30.f;
+    effect->init();
+    REQUIRE(effect->gainReduction.load(std::memory_order_relaxed) == 1.f);
 
-    auto confirmDestinations = [](auto surge, const std::vector<std::pair<int, int>> &fxp) {
-        std::map<int, int> destinations;
-        for (const auto &mg : surge->storage.getPatch().modulation_global)
+    float left alignas(16)[BLOCK_SIZE], right alignas(16)[BLOCK_SIZE];
+    for (int block = 0; block < 128; ++block)
+    {
+        std::fill(left, left + BLOCK_SIZE, 0.9f);
+        std::fill(right, right + BLOCK_SIZE, 0.9f);
+        effect->process(left, right);
+    }
+    const auto reduced = effect->gainReduction.load(std::memory_order_relaxed);
+    REQUIRE(reduced > 0.f);
+    REQUIRE(reduced < 0.8f);
+
+    for (int block = 0; block < 128; ++block)
+        effect->process_only_control();
+    REQUIRE(effect->gainReduction.load(std::memory_order_relaxed) > reduced);
+    effect->suspend();
+    REQUIRE(effect->gainReduction.load(std::memory_order_relaxed) == 1.f);
+}
+
+TEST_CASE("Scene output delay stays aligned and resets", "[fx][fixed-fx]")
+{
+    FixedFxSceneDelay delay;
+    float input[2][2]{}, output[2][2]{};
+    for (int sample = 0; sample < fixedFxLatencySamples + 1; ++sample)
+    {
+        for (int scene = 0; scene < 2; ++scene)
+            for (int channel = 0; channel < 2; ++channel)
+                input[scene][channel] = sample == 0 ? 1.f + scene * 2 + channel : 0.f;
+        delay.process(input, output);
+        for (int scene = 0; scene < 2; ++scene)
+            for (int channel = 0; channel < 2; ++channel)
+                REQUIRE(output[scene][channel] ==
+                        (sample == fixedFxLatencySamples ? 1.f + scene * 2 + channel : 0.f));
+    }
+
+    input[0][0] = 1.f;
+    delay.process(input, output);
+    delay.reset();
+    input[0][0] = 0.f;
+    for (int sample = 0; sample <= fixedFxLatencySamples; ++sample)
+    {
+        delay.process(input, output);
+        REQUIRE(output[0][0] == 0.f);
+    }
+}
+
+TEST_CASE("Conditioner smooths Mix changes without changing latency", "[fx][fixed-fx]")
+{
+    auto surge = Surge::Headless::createSurge(44100);
+    REQUIRE(surge);
+    surge->process();
+    auto &patch = surge->storage.getPatch();
+    auto *effect = surge->fx[fxslot_global4].get();
+    REQUIRE(effect);
+    float left alignas(16)[BLOCK_SIZE], right alignas(16)[BLOCK_SIZE];
+
+    for (int block = 0; block < 20; ++block)
+    {
+        std::fill(left, left + BLOCK_SIZE, 0.2f);
+        std::fill(right, right + BLOCK_SIZE, 0.2f);
+        effect->process(left, right);
+    }
+    REQUIRE(left[0] == Approx(0.2f).margin(1.e-6f));
+
+    auto &mix = patch.fx[fxslot_global4].p[ConditionerEffect::cond_mix];
+    patch.globaldata[mix.id].f = 1.f;
+    float first = 0.f, last = 0.f;
+    for (int block = 0; block < 20; ++block)
+    {
+        std::fill(left, left + BLOCK_SIZE, 0.2f);
+        std::fill(right, right + BLOCK_SIZE, 0.2f);
+        effect->process(left, right);
+        if (block == 0)
+            first = left[0];
+        last = left[BLOCK_SIZE - 1];
+        for (int i = 0; i < BLOCK_SIZE; ++i)
         {
-            if (destinations.find(mg.destination_id) == destinations.end())
-                destinations[mg.destination_id] = 0;
-            destinations[mg.destination_id]++;
+            REQUIRE(std::isfinite(left[i]));
+            REQUIRE(left[i] > 0.01f);
         }
-
-        auto rd = [surge, &destinations](auto f, auto p) {
-            auto id = surge->storage.getPatch().fx[f].p[p].id;
-            if (destinations.find(id) == destinations.end())
-                destinations[id] = 0;
-            destinations[id]--;
-        };
-
-        for (auto p : fxp)
-        {
-            rd(p.first, p.second);
-        }
-
-        for (auto p : destinations)
-        {
-            INFO("Confirming destination " << p.first);
-            REQUIRE(p.second == 0);
-        }
-        return true;
-    };
-
-    SECTION("Setup Delay With Modulation And Move It")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-
-        step(surge);
-        Surge::Test::setFX(surge, 0, fxt_delay);
-
-        surge->setModDepth01(surge->storage.getPatch().fx[0].p[2].id, ms_slfo1, 0, 0, 0.1);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 1);
-        step(surge);
-
-        surge->reorderFx(0, 1, SurgeSynthesizer::MOVE);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 1);
-
-        confirmDestinations(surge, {{1, 2}});
     }
-
-    SECTION("Setup Delay With Modulation And Another FX Then Move It")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-
-        step(surge);
-        Surge::Test::setFX(surge, 0, fxt_delay);
-        Surge::Test::setFX(surge, 4, fxt_reverb);
-
-        surge->setModDepth01(surge->storage.getPatch().fx[0].p[2].id, ms_slfo1, 0, 0, 0.1);
-        surge->setModDepth01(surge->storage.getPatch().fx[0].p[3].id, ms_slfo2, 0, 0, 0.2);
-        surge->setModDepth01(surge->storage.getPatch().fx[4].p[3].id, ms_slfo1, 0, 0, 0.3);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 3);
-        step(surge);
-
-        surge->reorderFx(0, 1, SurgeSynthesizer::MOVE);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 3);
-
-        REQUIRE(confirmDestinations(surge, {{1, 2}, {1, 3}, {4, 3}}));
-    }
-
-    SECTION("Setup Delay With Modulation And Copy It")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-
-        step(surge);
-        Surge::Test::setFX(surge, 0, fxt_delay);
-
-        surge->setModDepth01(surge->storage.getPatch().fx[0].p[2].id, ms_slfo1, 0, 0, 0.1);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 1);
-        step(surge);
-
-        surge->reorderFx(0, 1, SurgeSynthesizer::COPY);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 2);
-
-        REQUIRE(confirmDestinations(surge, {{0, 2}, {1, 2}}));
-    }
-
-    SECTION("Move Over a Modulated FX")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-
-        step(surge);
-        Surge::Test::setFX(surge, 0, fxt_delay);
-        Surge::Test::setFX(surge, 1, fxt_reverb);
-
-        surge->setModDepth01(surge->storage.getPatch().fx[0].p[2].id, ms_slfo1, 0, 0, 0.1);
-        surge->setModDepth01(surge->storage.getPatch().fx[1].p[3].id, ms_slfo2, 0, 0, 0.1);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 2);
-        confirmDestinations(surge, {{0, 2}, {1, 3}});
-
-        surge->reorderFx(0, 1, SurgeSynthesizer::MOVE);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 1);
-        confirmDestinations(surge, {{1, 2}});
-    }
-
-    SECTION("Copy Over a Modulated FX")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-
-        step(surge);
-        Surge::Test::setFX(surge, 0, fxt_delay);
-        Surge::Test::setFX(surge, 1, fxt_reverb);
-
-        surge->setModDepth01(surge->storage.getPatch().fx[0].p[2].id, ms_slfo1, 0, 0, 0.1);
-        surge->setModDepth01(surge->storage.getPatch().fx[1].p[3].id, ms_slfo2, 0, 0, 0.1);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 2);
-        confirmDestinations(surge, {{0, 2}, {1, 3}});
-
-        surge->reorderFx(0, 1, SurgeSynthesizer::COPY);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 2);
-        confirmDestinations(surge, {{0, 2}, {1, 2}});
-    }
-
-    SECTION("Swap Two Modulated FX")
-    {
-        auto surge = Surge::Headless::createSurge(44100);
-        REQUIRE(surge);
-
-        step(surge);
-        Surge::Test::setFX(surge, 0, fxt_delay);
-        Surge::Test::setFX(surge, 1, fxt_reverb);
-
-        surge->setModDepth01(surge->storage.getPatch().fx[0].p[2].id, ms_slfo1, 0, 0, 0.1);
-        surge->setModDepth01(surge->storage.getPatch().fx[1].p[3].id, ms_slfo2, 0, 0, 0.1);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 2);
-        confirmDestinations(surge, {{0, 2}, {1, 3}});
-
-        surge->reorderFx(0, 1, SurgeSynthesizer::SWAP);
-        step(surge);
-        REQUIRE(surge->storage.getPatch().modulation_global.size() == 2);
-        confirmDestinations(surge, {{0, 3}, {1, 2}});
-    }
+    REQUIRE(first == Approx(0.2f).margin(0.01f));
+    REQUIRE(last < first - 0.01f);
 }
 
 TEST_CASE("Scenes Output Data", "[fx]")
@@ -268,23 +341,26 @@ TEST_CASE("Stopping Sound Clears Poisoned FX State", "[fx]") // See issue 8240
     // A single non-finite sample that reaches an effect's internal state must not survive
     // stopSound(). Otherwise it recirculates forever, and the output hard clipper turns it
     // into a sustained full scale signal that no volume control can attenuate.
-    for (int t = fxt_off + 1; t < n_fx_types; ++t)
+    for (auto slot : fixedFxSlots)
     {
-        if (!isAvailableFxType(t))
+#if defined(_M_ARM64EC)
+        if (slot == fxslot_global1)
             continue;
+#endif
+        auto t = fixedFxTypeForSlot(slot);
         DYNAMIC_SECTION("FX " << t << " " << fx_type_names[t])
         {
             auto surge = Surge::Headless::createSurge(48000);
             REQUIRE(surge);
 
-            Surge::Test::setFX(surge, 0, (fx_type)t);
-            REQUIRE(surge->fx[0]);
+            surge->process();
+            REQUIRE(surge->fx[slot]);
 
             float L alignas(16)[BLOCK_SIZE], R alignas(16)[BLOCK_SIZE];
 
             std::fill(L, L + BLOCK_SIZE, std::numeric_limits<float>::quiet_NaN());
             std::fill(R, R + BLOCK_SIZE, std::numeric_limits<float>::quiet_NaN());
-            surge->fx[0]->process(L, R);
+            surge->fx[slot]->process(L, R);
 
             surge->stopSound();
 
@@ -292,7 +368,7 @@ TEST_CASE("Stopping Sound Clears Poisoned FX State", "[fx]") // See issue 8240
             {
                 std::fill(L, L + BLOCK_SIZE, 0.f);
                 std::fill(R, R + BLOCK_SIZE, 0.f);
-                surge->fx[0]->process(L, R);
+                surge->fx[slot]->process(L, R);
 
                 INFO("Block " << b);
                 for (int s = 0; s < BLOCK_SIZE; ++s)
@@ -325,10 +401,10 @@ struct DelayLineModeProbe
         auto surge = Surge::Headless::createSurge(sampleRate);
         REQUIRE(surge);
 
-        Surge::Test::setFX(surge, 0, fxt_delay);
+        surge->process();
 
         auto &patch = surge->storage.getPatch();
-        auto *fx = &(patch.fx[0]);
+        auto *fx = &(patch.fx[fxslot_global2]);
 
         fx->p[DelayEffect::dly_time_left].val.f = std::log2(startSeconds);
         fx->p[DelayEffect::dly_time_right].val.f = std::log2(startSeconds);
@@ -346,7 +422,7 @@ struct DelayLineModeProbe
         fx->p[DelayEffect::dly_highcut].deactivated = true;
 
         patch.copy_globaldata(patch.globaldata);
-        surge->fx[0]->init();
+        surge->fx[fxslot_global2]->init();
 
         return surge;
     }
@@ -360,7 +436,7 @@ struct DelayLineModeProbe
     {
         auto surge = makeDelay();
         auto &patch = surge->storage.getPatch();
-        auto *fx = &(patch.fx[0]);
+        auto *fx = &(patch.fx[fxslot_global2]);
 
         float dataL alignas(16)[BLOCK_SIZE], dataR alignas(16)[BLOCK_SIZE];
 
@@ -374,7 +450,7 @@ struct DelayLineModeProbe
                 dataR[0] = 1.f;
             }
 
-            surge->fx[0]->process(dataL, dataR);
+            surge->fx[fxslot_global2]->process(dataL, dataR);
         };
 
         for (int b = 0; b < 100; ++b)
@@ -422,7 +498,7 @@ struct DelayLineModeProbe
     {
         auto surge = makeDelay();
         auto &patch = surge->storage.getPatch();
-        auto *fx = &(patch.fx[0]);
+        auto *fx = &(patch.fx[fxslot_global2]);
 
         // deliberately not a whole number of cycles per delay time, so that the two taps
         // are out of phase with each other
@@ -442,7 +518,7 @@ struct DelayLineModeProbe
                 phase += dPhase;
             }
 
-            surge->fx[0]->process(dataL, dataR);
+            surge->fx[fxslot_global2]->process(dataL, dataR);
 
             for (int k = 0; k < BLOCK_SIZE; ++k)
             {
@@ -498,7 +574,7 @@ struct DelayLineModeProbe
     {
         auto surge = makeDelay();
         auto &patch = surge->storage.getPatch();
-        auto *fx = &(patch.fx[0]);
+        auto *fx = &(patch.fx[fxslot_global2]);
 
         constexpr double twoPi{6.283185307179586};
         const double dPhase = twoPi * toneHz / sampleRate;
@@ -515,7 +591,7 @@ struct DelayLineModeProbe
                 phase += dPhase;
             }
 
-            surge->fx[0]->process(dataL, dataR);
+            surge->fx[fxslot_global2]->process(dataL, dataR);
 
             if (keep)
             {

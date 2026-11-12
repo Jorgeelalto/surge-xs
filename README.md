@@ -10,7 +10,7 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 - [x] Remove Surge FX, Python and Rust bindings.
 - [x] Remove Airwindows stuff
 - [x] Select effects, filters and oscillators to keep.
-   - Wanted FXs: Ensemble, Delay and Reverb 1.
+   - Wanted FXs: Ensemble, Delay, Reverb and Conditioner.
    - Wanted filters:
       - Lowpass: OB-Xd 12 dB, Diode Ladder, K35.
       - Bandpass: 12 dB.
@@ -25,7 +25,7 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 - [x] Simplify waveshaper.
 - [x] Remove right-click menu parameter name and help link.
 - [ ] Remove patch functionality.
-- [ ] Simplify FX chain. Hardcode 3 serial FXs (chorus, delay and reverb).
+- [x] Simplify FX chain. Hardcode 4 serial FXs (ensemble, delay, reverb and conditioner).
 - [ ] Simplify filter routing, only one filter.
 - [x] Simplify modulation source panel.
 - [ ] Simplify LFOs (TBD).

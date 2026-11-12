@@ -34,6 +34,9 @@
 #include "WavetableScriptEvaluator.h"
 #include "PatchFileHeaderStructs.h"
 #include "FxPresetAndClipboardManager.h"
+#include "DelayEffect.h"
+#include "BBDEnsembleEffect.h"
+#include "ConditionerEffect.h"
 #include "sst/basic-blocks/mechanics/endian-ops.h"
 
 namespace mech = sst::basic_blocks::mechanics;
@@ -46,6 +49,102 @@ namespace mech = sst::basic_blocks::mechanics;
 
 using namespace Surge::Test;
 using namespace std::chrono_literals;
+
+TEST_CASE("Fixed FX patch state and legacy reset", "[io][fixed-fx]")
+{
+    auto source = Surge::Headless::createSurge(44100);
+    auto destination = Surge::Headless::createSurge(44100);
+    REQUIRE(source);
+    REQUIRE(destination);
+    source->process();
+
+    auto &sourcePatch = source->storage.getPatch();
+    auto &mix = sourcePatch.fx[fxslot_global2].p[DelayEffect::dly_mix];
+    source->setParameter01(source->idForParameter(&mix), 0.6f, false);
+    REQUIRE(source->setModDepth01(mix.id, ms_slfo1, 0, 0, 0.2f));
+    auto &conditionerMix = sourcePatch.fx[fxslot_global4].p[ConditionerEffect::cond_mix];
+    source->setParameter01(source->idForParameter(&conditionerMix), 0.4f, false);
+    REQUIRE(source->setModDepth01(conditionerMix.id, ms_slfo1, 0, 0, 0.3f));
+    sourcePatch.scene[0].lowcut.val.f = -12.f;
+    auto cutoffId = sourcePatch.scene[0].filterunit[0].cutoff.id;
+    REQUIRE(source->setModDepth01(cutoffId, ms_lfo1, 0, 0, 0.1f));
+
+    void *data = nullptr;
+    auto size = sourcePatch.save_xml(&data);
+    REQUIRE(data);
+    REQUIRE(size > 0);
+    std::string xml(static_cast<const char *>(data), size);
+    free(data);
+
+    SECTION("New saves retain effect settings and modulation")
+    {
+        destination->loadRaw(xml.data(), static_cast<int>(xml.size()), false);
+        auto &patch = destination->storage.getPatch();
+        auto &loadedMix = patch.fx[fxslot_global2].p[DelayEffect::dly_mix];
+        REQUIRE(loadedMix.val.f == Approx(0.6f));
+        REQUIRE(destination->getModDepth01(loadedMix.id, ms_slfo1, 0, 0) == Approx(0.2f));
+        auto &loadedConditioner = patch.fx[fxslot_global4].p[ConditionerEffect::cond_mix];
+        REQUIRE(loadedConditioner.val.f == Approx(0.4f));
+        REQUIRE(destination->getModDepth01(loadedConditioner.id, ms_slfo1, 0, 0) == Approx(0.3f));
+        REQUIRE(patch.scene[0].lowcut.val.f == Approx(-12.f));
+        REQUIRE(destination->getModDepth01(cutoffId, ms_lfo1, 0, 0) == Approx(0.1f));
+    }
+
+    SECTION("Host state retains effect settings and modulation")
+    {
+        void *state = nullptr;
+        auto stateSize = source->saveRaw(&state);
+        REQUIRE(state);
+        REQUIRE(stateSize > 0);
+        destination->loadRaw(state, stateSize, false);
+        auto &loadedMix = destination->storage.getPatch().fx[fxslot_global2].p[DelayEffect::dly_mix];
+        REQUIRE(loadedMix.val.f == Approx(0.6f));
+        REQUIRE(destination->getModDepth01(loadedMix.id, ms_slfo1, 0, 0) == Approx(0.2f));
+        auto &loadedConditioner =
+            destination->storage.getPatch().fx[fxslot_global4].p[ConditionerEffect::cond_mix];
+        REQUIRE(loadedConditioner.val.f == Approx(0.4f));
+        REQUIRE(destination->getModDepth01(loadedConditioner.id, ms_slfo1, 0, 0) == Approx(0.3f));
+    }
+
+    SECTION("Legacy saves reset effects but retain other parameters")
+    {
+        struct FxErrors : SurgeStorage::ErrorListener
+        {
+            bool invalidChain{false};
+            void onSurgeError(const std::string &, const std::string &title,
+                              const SurgeStorage::ErrorType &) override
+            {
+                invalidChain |= title == "FX Patch Error";
+            }
+        } errors;
+        destination->storage.addErrorListener(&errors);
+        const auto oldFormat = GENERATE(0, 1);
+        const std::string marker = " xs_fixed_fx=\"2\"";
+        const auto pos = xml.find(marker);
+        REQUIRE(pos != std::string::npos);
+        xml.replace(pos, marker.size(), oldFormat == 0 ? "" : " xs_fixed_fx=\"1\"");
+        const auto revision = fmt::format("revision=\"{}\"", ff_revision);
+        const auto revisionPos = xml.find(revision);
+        REQUIRE(revisionPos != std::string::npos);
+        if (oldFormat == 0)
+            xml.replace(revisionPos, revision.size(), "revision=\"20\"");
+        destination->loadRaw(xml.data(), static_cast<int>(xml.size()), false);
+        destination->storage.removeErrorListener(&errors);
+        REQUIRE_FALSE(errors.invalidChain);
+        auto &patch = destination->storage.getPatch();
+        auto &loadedMix = patch.fx[fxslot_global2].p[DelayEffect::dly_mix];
+        REQUIRE(loadedMix.val.f == 0.f);
+        REQUIRE(destination->getModDepth01(loadedMix.id, ms_slfo1, 0, 0) == 0.f);
+        auto &loadedConditioner = patch.fx[fxslot_global4].p[ConditionerEffect::cond_mix];
+        REQUIRE(loadedConditioner.val.f == 0.f);
+        REQUIRE(destination->getModDepth01(loadedConditioner.id, ms_slfo1, 0, 0) == 0.f);
+        REQUIRE(patch.scene[0].lowcut.val.f == Approx(-12.f));
+        REQUIRE(destination->getModDepth01(cutoffId, ms_lfo1, 0, 0) == Approx(0.1f));
+#if !defined(_M_ARM64EC)
+        REQUIRE_FALSE(patch.fx[fxslot_global1].p[BBDEnsembleEffect::ens_output_filter].deactivated);
+#endif
+    }
+}
 
 TEST_CASE("We Can Read Wavetables", "[io]")
 {
@@ -164,7 +263,7 @@ struct WavErrorCatcher : SurgeStorage::ErrorListener
     }
 };
 
-TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
+TEST_CASE("Legacy effect configurations are reset", "[io][fx]")
 {
     auto surge = Surge::Headless::createSurge(44100);
     REQUIRE(surge);
@@ -184,9 +283,12 @@ TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
             first, second, third);
         patch.load_xml(xml.c_str(), static_cast<int>(xml.size()), false);
         REQUIRE(patch.fx[0].type.val.i == fxt_off);
-        REQUIRE(patch.fx[1].type.val.i == fxt_ensemble);
+        REQUIRE(patch.fx[1].type.val.i == fxt_off);
         REQUIRE(patch.fx[2].type.val.i == fxt_off);
-        REQUIRE(errors.message.find("no longer") != std::string::npos);
+        REQUIRE(patch.fx[fxslot_global1].type.val.i == fxt_ensemble);
+        REQUIRE(patch.fx[fxslot_global2].type.val.i == fxt_delay);
+        REQUIRE(patch.fx[fxslot_global3].type.val.i == fxt_reverb);
+        REQUIRE(patch.fx[fxslot_global4].type.val.i == fxt_conditioner);
     }
 
     SECTION("Single FX preset")
@@ -210,8 +312,9 @@ TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
         REQUIRE(size > 0);
         surge->loadRaw(data, size, false);
         REQUIRE(patch.fx[0].type.val.i == fxt_off);
-        REQUIRE(patch.fx[1].type.val.i == fxt_delay);
-        REQUIRE(errors.message.find("no longer") != std::string::npos);
+        REQUIRE(patch.fx[1].type.val.i == fxt_off);
+        REQUIRE(patch.fx[fxslot_global1].type.val.i == fxt_ensemble);
+        REQUIRE(errors.message.find("invalid") != std::string::npos);
     }
 
     SECTION("FX chain")
@@ -237,13 +340,8 @@ TEST_CASE("Removed effects are disabled when loading", "[io][fx]")
         {
             surge->setParameter01(id, static_cast<float>(t) / (n_fx_types - 1), false);
             surge->process();
-            const bool available = t == fxt_delay || t == fxt_reverb || t == fxt_ensemble;
-            REQUIRE(type->val.i == (available ? t : fxt_off));
-#if defined(_M_ARM64EC)
-            REQUIRE(static_cast<bool>(surge->fx[0]) == (available && t != fxt_ensemble));
-#else
-            REQUIRE(static_cast<bool>(surge->fx[0]) == available);
-#endif
+            REQUIRE(type->val.i == fxt_off);
+            REQUIRE_FALSE(surge->fx[0]);
         }
     }
     storage.removeErrorListener(&errors);
@@ -1115,13 +1213,7 @@ TEST_CASE("Global Modulation Routings Are Not Scene Tagged For Shared Modulators
         dest->loadRaw(d, sz, false);
     };
 
-    // put a reverb in A Insert FX 1 and hand back the index of a param we can modulate
-    auto reverbInAIns1 = [](std::shared_ptr<SurgeSynthesizer> s) {
-        auto *pt = &(s->storage.getPatch().fx[fxslot_ains1].type);
-
-        s->setParameter01(s->idForParameter(pt),
-                          1.f * float(fxt_reverb) / (pt->val_max.i - pt->val_min.i), false);
-
+    auto reverbParameter = [](std::shared_ptr<SurgeSynthesizer> s) {
         for (int i = 0; i < 10; ++i)
         {
             s->process();
@@ -1129,7 +1221,7 @@ TEST_CASE("Global Modulation Routings Are Not Scene Tagged For Shared Modulators
 
         for (int i = 0; i < n_fx_params; ++i)
         {
-            if (s->storage.getPatch().fx[fxslot_ains1].p[i].modulateable)
+            if (s->storage.getPatch().fx[fxslot_global3].p[i].modulateable)
             {
                 return i;
             }
@@ -1145,8 +1237,8 @@ TEST_CASE("Global Modulation Routings Are Not Scene Tagged For Shared Modulators
         auto src = Surge::Headless::createSurge(44100);
         auto dest = Surge::Headless::createSurge(44100);
 
-        auto pidx = reverbInAIns1(src);
-        auto *fxp = &(src->storage.getPatch().fx[fxslot_ains1].p[pidx]);
+        auto pidx = reverbParameter(src);
+        auto *fxp = &(src->storage.getPatch().fx[fxslot_global3].p[pidx]);
 
         // this is what a pre-#4960 stream contained
         REQUIRE(src->setModDepth01(fxp->id, ms_ctrl7, 1, 0, 0.5));
@@ -1156,7 +1248,7 @@ TEST_CASE("Global Modulation Routings Are Not Scene Tagged For Shared Modulators
 
         fromto(src, dest);
 
-        auto *dfxp = &(dest->storage.getPatch().fx[fxslot_ains1].p[pidx]);
+        auto *dfxp = &(dest->storage.getPatch().fx[fxslot_global3].p[pidx]);
 
         REQUIRE(dest->isAnyActiveModulation(dfxp->id, ms_ctrl7, 0));
         REQUIRE(dest->getModDepth01(dfxp->id, ms_ctrl7, 0, 0) == Approx(0.5).margin(1e-5));
@@ -1176,92 +1268,19 @@ TEST_CASE("Global Modulation Routings Are Not Scene Tagged For Shared Modulators
         auto src = Surge::Headless::createSurge(44100);
         auto dest = Surge::Headless::createSurge(44100);
 
-        auto pidx = reverbInAIns1(src);
-        auto *fxp = &(src->storage.getPatch().fx[fxslot_ains1].p[pidx]);
+        auto pidx = reverbParameter(src);
+        auto *fxp = &(src->storage.getPatch().fx[fxslot_global3].p[pidx]);
 
         REQUIRE(src->setModDepth01(fxp->id, ms_slfo1, 1, 0, 0.5));
 
         fromto(src, dest);
 
-        auto *dfxp = &(dest->storage.getPatch().fx[fxslot_ains1].p[pidx]);
+        auto *dfxp = &(dest->storage.getPatch().fx[fxslot_global3].p[pidx]);
 
         REQUIRE(dest->isAnyActiveModulation(dfxp->id, ms_slfo1, 1));
         REQUIRE_FALSE(dest->isAnyActiveModulation(dfxp->id, ms_slfo1, 0));
     }
 
-    SECTION("Pasting A Scene Does Not Scene Tag A Macro Routing")
-    {
-        // copying scene A onto scene B used to stamp the paste scene onto every global
-        // routing it carried across, which recreated the bug in a current build
-        auto surge = Surge::Headless::createSurge(44100);
-
-        auto pidx = reverbInAIns1(surge);
-        auto *fxp = &(surge->storage.getPatch().fx[fxslot_ains1].p[pidx]);
-
-        REQUIRE(surge->setModDepth01(fxp->id, ms_ctrl7, 0, 0, 0.5));
-        REQUIRE(surge->isAnyActiveModulation(fxp->id, ms_ctrl7, 0));
-
-        auto isValid = [&surge](int id, modsources ms) { return surge->isValidModulation(id, ms); };
-
-        surge->storage.clipboard_copy(cp_scene, 0, -1);
-        surge->storage.clipboard_paste(cp_scene, 1, -1, ms_original, isValid);
-
-        for (const auto &mg : surge->storage.getPatch().modulation_global)
-        {
-            if (!isModulatorDistinctPerScene((modsources)mg.source_id))
-            {
-                REQUIRE(mg.source_scene == 0);
-            }
-        }
-    }
-
-    SECTION("Copying Scene B Carries Its Macro To FX Routings")
-    {
-        // the copy side of the same confusion: a macro routing onto a scene B insert FX
-        // is not scene tagged, so asking for source_scene == 1 found nothing at all
-        auto surge = Surge::Headless::createSurge(44100);
-
-        // a reverb in the matching insert slot of both scenes, which is the state a real
-        // scene paste arrives at once the UI has copied the FX across too
-        for (auto slot : {fxslot_ains1, fxslot_bins1})
-        {
-            auto *pt = &(surge->storage.getPatch().fx[slot].type);
-
-            surge->setParameter01(surge->idForParameter(pt),
-                                  1.f * float(fxt_reverb) / (pt->val_max.i - pt->val_min.i), false);
-
-            for (int i = 0; i < 10; ++i)
-            {
-                surge->process();
-            }
-        }
-
-        auto pidx = -1;
-
-        for (int i = 0; i < n_fx_params && pidx < 0; ++i)
-        {
-            if (surge->storage.getPatch().fx[fxslot_bins1].p[i].modulateable)
-            {
-                pidx = i;
-            }
-        }
-
-        REQUIRE(pidx >= 0);
-
-        auto *bfxp = &(surge->storage.getPatch().fx[fxslot_bins1].p[pidx]);
-
-        REQUIRE(surge->setModDepth01(bfxp->id, ms_ctrl7, 0, 0, 0.5));
-
-        auto isValid = [&surge](int id, modsources ms) { return surge->isValidModulation(id, ms); };
-
-        surge->storage.clipboard_copy(cp_scene, 1, -1);
-        surge->storage.clipboard_paste(cp_scene, 0, -1, ms_original, isValid);
-
-        // it should have landed on the matching slot of scene A's insert chain
-        auto *afxp = &(surge->storage.getPatch().fx[fxslot_ains1].p[pidx]);
-
-        REQUIRE(surge->isAnyActiveModulation(afxp->id, ms_ctrl7, 0));
-    }
 }
 
 TEST_CASE("XML Direct", "[io]")

@@ -36,6 +36,8 @@ namespace Surge
 namespace Widgets
 {
 
+struct VuMeter;
+
 class CurrentFxDisplay : public MainFrame::OverlayComponent
 {
   public:
@@ -43,6 +45,7 @@ class CurrentFxDisplay : public MainFrame::OverlayComponent
     ~CurrentFxDisplay() override;
 
     void updateCurrentFx(int current_fx);
+    void refreshGainReductionMeter();
 
     std::unordered_map<std::string, std::string> uiidToSliderLabel;
     SurgeStorage *storage{nullptr};
@@ -65,6 +68,8 @@ class CurrentFxDisplay : public MainFrame::OverlayComponent
 
     // Used by everything.
     std::array<std::unique_ptr<Surge::Widgets::EffectLabel>, n_fx_params> labels_;
+    std::unique_ptr<juce::Label> effectHeading_;
+    std::unique_ptr<VuMeter> gainReductionMeter_;
     // Note: Due to the existing code that refers to it, the effectChooser and
     // fxPresetLabel widgets are held in the SurgeGUIEditor class, rather than here.
     // If the code (callbacks) can end up localized here too, we can move the

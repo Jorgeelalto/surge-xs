@@ -64,6 +64,14 @@ int Reverb1Effect::group_label_ypos(int id)
     return 0;
 }
 
+void Reverb1Effect::init()
+{
+    surge::sstfx::SurgeSSTFXBase<
+        sst::effects::reverb1::Reverb1<surge::sstfx::SurgeFXConfig>>::init();
+    mix.set_target(fxdata->p[rev1_mix].val.f);
+    mix.instantize();
+}
+
 void Reverb1Effect::init_ctrltypes()
 {
     Effect::init_ctrltypes();
@@ -106,6 +114,7 @@ void Reverb1Effect::init_ctrltypes()
     fxdata->p[rev1_width].posy_offset = 5;
 
     configureControlsFromFXMetadata();
+    fxdata->p[rev1_mix].val_default.f = 0.f;
 }
 
 void Reverb1Effect::init_default_values()
@@ -124,7 +133,7 @@ void Reverb1Effect::init_default_values()
     fxdata->p[rev1_highcut].val.f = 72.0f;
     fxdata->p[rev1_highcut].deactivated = false;
 
-    fxdata->p[rev1_mix].val.f = 0.5f;
+    fxdata->p[rev1_mix].val.f = 0.f;
     fxdata->p[rev1_width].val.f = 0.0f;
 
     // fxdata->p[rev1_variation].val.f = 0.f;

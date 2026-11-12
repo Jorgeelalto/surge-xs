@@ -82,6 +82,7 @@ SurgeSynthProcessor::SurgeSynthProcessor()
                                .withOutput("Scene A", juce::AudioChannelSet::stereo(), false)
                                .withOutput("Scene B", juce::AudioChannelSet::stereo(), false))
 {
+    setLatencySamples(fixedFxLatencySamples);
     // Since we are using 'external clap' this is the one JUCE API we can't override
     std::string wrapperTypeString = getWrapperTypeDescription(wrapperType);
 
@@ -534,6 +535,7 @@ void SurgeSynthProcessor::prepareToPlay(double sr, int samplesPerBlock)
     }
 
     surge->setSamplerate(sr);
+    sceneOutputDelay.reset();
     oscCheckStartup = true;
 
     // It used to be we would set audio processing active true here *but* REAPER calls this for
@@ -639,6 +641,7 @@ void SurgeSynthProcessor::processBlock(juce::AudioBuffer<float> &buffer,
         // I am just becoming active. There may be lingering notes from when I was
         // deactivated so
         surge->stopSound();
+        sceneOutputDelay.reset();
     }
 
     surge->audio_processing_active = true;
@@ -748,6 +751,13 @@ void SurgeSynthProcessor::processBlock(juce::AudioBuffer<float> &buffer,
         *outL = surge->output[0][blockPos];
         *outR = surge->output[1][blockPos];
 
+        float sceneInput[2][2] = {{surge->sceneout[0][0][blockPos],
+                                   surge->sceneout[0][1][blockPos]},
+                                  {surge->sceneout[1][0][blockPos],
+                                   surge->sceneout[1][1][blockPos]}};
+        float delayedScene[2][2];
+        sceneOutputDelay.process(sceneInput, delayedScene);
+
         if (surge->activateExtraOutputs)
         {
             if (sceneAOutput.getNumChannels() == 2)
@@ -757,8 +767,8 @@ void SurgeSynthProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
                 if (sAL && sAR)
                 {
-                    *sAL = surge->sceneout[0][0][blockPos];
-                    *sAR = surge->sceneout[0][1][blockPos];
+                    *sAL = delayedScene[0][0];
+                    *sAR = delayedScene[0][1];
                 }
             }
 
@@ -769,8 +779,8 @@ void SurgeSynthProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
                 if (sBL && sBR)
                 {
-                    *sBL = surge->sceneout[1][0][blockPos];
-                    *sBR = surge->sceneout[1][1][blockPos];
+                    *sBL = delayedScene[1][0];
+                    *sBR = delayedScene[1][1];
                 }
             }
         }
@@ -1146,6 +1156,7 @@ clap_process_status SurgeSynthProcessor::clap_direct_process(const clap_process 
         // I am just becoming active. There may be lingering notes from when I was
         // deactivated so
         surge->stopSound();
+        sceneOutputDelay.reset();
     }
     surge->audio_processing_active = true;
 
@@ -1258,12 +1269,19 @@ clap_process_status SurgeSynthProcessor::clap_direct_process(const clap_process 
         outL++;
         outR++;
 
+        float sceneInput[2][2] = {{surge->sceneout[0][0][blockPos],
+                                   surge->sceneout[0][1][blockPos]},
+                                  {surge->sceneout[1][0][blockPos],
+                                   surge->sceneout[1][1][blockPos]}};
+        float delayedScene[2][2];
+        sceneOutputDelay.process(sceneInput, delayedScene);
+
         if (haveSceneOut)
         {
-            *sceneAL = surge->sceneout[0][0][blockPos];
-            *sceneAR = surge->sceneout[0][1][blockPos];
-            *sceneBL = surge->sceneout[1][0][blockPos];
-            *sceneBR = surge->sceneout[1][1][blockPos];
+            *sceneAL = delayedScene[0][0];
+            *sceneAR = delayedScene[0][1];
+            *sceneBL = delayedScene[1][0];
+            *sceneBR = delayedScene[1][1];
 
             sceneAL++;
             sceneAR++;
@@ -1652,6 +1670,7 @@ juce::AudioProcessorParameter *SurgeSynthProcessor::getBypassParameter() const
 void SurgeSynthProcessor::reset()
 {
     blockPos = 0;
+    sceneOutputDelay.reset();
 
     if (!surge)
     {

@@ -31,6 +31,13 @@ Loading a patch streams its data into the synthesizer's current storage. A UI ch
 locates the relevant parameters and calls the appropriate value-change function to
 invalidate them.
 
+The mixed scene output passes through a fixed Ensemble, Delay, Reverb, and Conditioner
+chain, in that order. Each effect has a Mix control initially set fully dry.
+Conditioner adds 64 samples of host-reported latency, also applied to the optional
+scene output buses. Legacy and three-effect patch FX settings are reset; new
+fixed-chain saves preserve their FX parameters and modulation. See
+[Effects Lifecycle](./FX_Lifecycle.md).
+
 ## SurgeGUIEditor
 
 `SurgeGUIEditor` works with the parameter set. Its `idle` thread reflects external

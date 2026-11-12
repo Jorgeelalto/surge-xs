@@ -25,6 +25,7 @@
 
 #include "SurgeSynthesizer.h"
 #include "SurgeStorage.h"
+#include "dsp/FixedFxSceneDelay.h"
 #include "util/LockFreeStack.h"
 
 #include "osc/OpenSoundControl.h"
@@ -504,6 +505,7 @@ class SurgeSynthProcessor : public juce::AudioProcessor,
     int juceSidePresetId{0};
 
     int blockPos = 0;
+    FixedFxSceneDelay sceneOutputDelay;
 
     int checkNamesEvery = 0;
 

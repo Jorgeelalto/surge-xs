@@ -93,10 +93,11 @@ SurgeSynthesizer::SurgeSynthesizer(PluginLayer *parent, const std::string &suppl
     memset(storage.getPatch().globaldata, 0, sizeof(pdata) * n_global_params);
     memset(mControlInterpolatorUsed, 0, sizeof(bool) * num_controlinterpolators);
 
+    storage.getPatch().resetFixedFx();
     for (int i = 0; i < n_fx_slots; i++)
     {
         fxsync[i] = storage.getPatch().fx[i];
-        fx_reload[i] = false;
+        fx_reload[i] = fixedFxTypeForSlot(i) != fxt_off;
         fx_reload_mod[i] = false;
     }
 
@@ -3142,36 +3143,8 @@ bool SurgeSynthesizer::setParameter01(long index, float value, bool external, bo
             }
         case ct_fxtype:
         {
-            // OK so this would work you would think but remember that FXSync is primary not the
-            // patch so
             auto p = storage.getPatch().param_ptr[index];
-            if (!isAvailableFxType(p->val.i))
-                p->val.i = fxt_off;
-            if (p->val.i != oldval.i)
-            {
-                int cge = p->ctrlgroup_entry;
-
-                // loadFx copies fxsync onto the live patch under this lock, and we are about to
-                // rewrite it from the UI thread, so take it too. See #6619.
-                std::lock_guard<std::mutex> g(fxSpawnMutex);
-
-                fxsync[cge].type.val.i = p->val.i;
-
-                // so funnily we want to set the value *back* so that loadFx picks up the change in
-                // fxsync
-                p->val.i = oldval.i;
-                Effect *t_fx = spawn_effect(fxsync[cge].type.val.i, &storage, &fxsync[cge], 0);
-                if (t_fx)
-                {
-                    t_fx->init_ctrltypes();
-                    t_fx->init_default_values();
-                    delete t_fx;
-                }
-
-                switch_toggled_queued = true;
-                load_fx_needed = true;
-                fx_reload[cge] = true;
-            }
+            p->val.i = fixedFxTypeForSlot(p->ctrlgroup_entry);
             break;
         }
         case ct_bool_relative_switch:
@@ -3280,6 +3253,15 @@ bool SurgeSynthesizer::loadFx(bool initp, bool force_reload_all)
     bool localSendFX[n_fx_slots];
     for (int s = 0; s < n_fx_slots; s++)
     {
+        if (fxsync[s].type.val.i != fixedFxTypeForSlot(s))
+        {
+            {
+                std::lock_guard<std::mutex> g(fxSpawnMutex);
+                fxsync[s] = storage.getPatch().fx[s];
+                fx_reload[s] = fixedFxTypeForSlot(s) != fxt_off && !fx[s];
+            }
+            storage.reportError("The fixed effect chain cannot be changed.", "Fixed FX Chain");
+        }
         localSendFX[s] = false;
         bool something_changed = false;
         if ((fxsync[s].type.val.i != storage.getPatch().fx[s].type.val.i) || force_reload_all ||
@@ -3378,11 +3360,11 @@ bool SurgeSynthesizer::loadFx(bool initp, bool force_reload_all)
                         }
                     }
                 }
-                /*for(int j=0; j<n_fx_params; j++)
+                for (int j = 0; j < n_fx_params; j++)
                 {
-                    storage.getPatch().globaldata[storage.getPatch().fx[s].p[j].id].f =
-                    storage.getPatch().fx[s].p[j].val.f;
-                }*/
+                    auto &p = storage.getPatch().fx[s].p[j];
+                    storage.getPatch().globaldata[p.id].i = p.val.i;
+                }
 
                 fx[s]->init();
 
@@ -4672,6 +4654,11 @@ void SurgeSynthesizer::resetStateFromTimeData()
 
 void SurgeSynthesizer::enqueueFXOff(int whichFX)
 {
+    if (fixedFxTypeForSlot(whichFX) != fxt_off)
+    {
+        storage.reportError("Effects in the fixed chain cannot be disabled.", "Fixed FX Chain");
+        return;
+    }
     // this can come from the UI thread. I don't think we need the spawn mutex but we might
     std::lock_guard<std::mutex> lg(fxSpawnMutex);
     fxsync[whichFX].type.val.i = fxt_off;
@@ -4862,7 +4849,8 @@ void SurgeSynthesizer::processControl()
     {
         for (int i = 0; i < n_fx_slots; i++)
         {
-            if (((1 << i) & fx_suspend_bitmask) && fx[i])
+            if (((1 << i) & fx_suspend_bitmask) && fx[i] &&
+                fixedFxTypeForSlot(i) == fxt_off)
                 fx[i]->suspend();
         }
         fx_suspend_bitmask = 0;
@@ -5006,8 +4994,6 @@ void SurgeSynthesizer::process()
         mech::clear_block<BLOCK_SIZE>(storage.audio_in_nonOS[1]);
     }
 
-    // TODO: FIX SCENE ASSUMPTION
-    float fxsendout alignas(16)[n_send_slots][2][BLOCK_SIZE];
     bool play_scene[n_scenes];
 
     {
@@ -5015,12 +5001,6 @@ void SurgeSynthesizer::process()
         mech::clear_block<BLOCK_SIZE_OS>(sceneout[0][1]);
         mech::clear_block<BLOCK_SIZE_OS>(sceneout[1][0]);
         mech::clear_block<BLOCK_SIZE_OS>(sceneout[1][1]);
-
-        for (int i = 0; i < n_send_slots; ++i)
-        {
-            mech::clear_block<BLOCK_SIZE>(fxsendout[i][0]);
-            mech::clear_block<BLOCK_SIZE>(fxsendout[i][1]);
-        }
     }
 
     storage.modRoutingMutex.lock();
@@ -5029,33 +5009,6 @@ void SurgeSynthesizer::process()
     amp.set_target_smoothed(
         storage.db_to_linear(storage.getPatch().globaldata[storage.getPatch().volume.id].f));
     amp_mute.set_target(mfade);
-
-    int fx_bypass = storage.getPatch().fx_bypass.val.i;
-
-    int sendToIndex[n_send_slots][2] = {
-        {fxslot_send1, 0}, {fxslot_send2, 1}, {fxslot_send3, 2}, {fxslot_send4, 3}};
-
-    if (fx_bypass == fxb_all_fx)
-    {
-        for (auto si : sendToIndex)
-        {
-            auto slot = si[0];
-            auto idx = si[1];
-            if (fx[slot])
-            {
-                FX[idx].set_target_smoothed(amp_to_linear(
-                    storage.getPatch().globaldata[storage.getPatch().fx[slot].return_level.id].f));
-                send[idx][0].set_target_smoothed(amp_to_linear(
-                    storage.getPatch()
-                        .scenedata[0][storage.getPatch().scene[0].send_level[idx].param_id_in_scene]
-                        .f));
-                send[idx][1].set_target_smoothed(amp_to_linear(
-                    storage.getPatch()
-                        .scenedata[1][storage.getPatch().scene[1].send_level[idx].param_id_in_scene]
-                        .f));
-            }
-        }
-    }
 
     list<SurgeVoice *>::iterator iter;
 
@@ -5273,26 +5226,6 @@ void SurgeSynthesizer::process()
         for (int channel = 0; channel < N_OUTPUTS; channel++)
             storage.scenesOutputData.provideSceneData(i, channel, sceneout[i][channel]);
 
-    // apply insert effects
-    if (fx_bypass != fxb_no_fx)
-    {
-        for (auto v : {fxslot_ains1, fxslot_ains2, fxslot_ains3, fxslot_ains4})
-        {
-            if (fx[v] && !(storage.getPatch().fx_disable.val.i & (1 << v)))
-            {
-                sc_state[0] = fx[v]->process_ringout(sceneout[0][0], sceneout[0][1], sc_state[0]);
-            }
-        }
-
-        for (auto v : {fxslot_bins1, fxslot_bins2, fxslot_bins3, fxslot_bins4})
-        {
-            if (fx[v] && !(storage.getPatch().fx_disable.val.i & (1 << v)))
-            {
-                sc_state[1] = fx[v]->process_ringout(sceneout[1][0], sceneout[1][1], sc_state[1]);
-            }
-        }
-    }
-
     for (int cls = 0; cls < n_scenes; ++cls)
     {
         switch (storage.sceneHardclipMode[cls])
@@ -5317,44 +5250,11 @@ void SurgeSynthesizer::process()
     mech::accumulate_from_to<BLOCK_SIZE>(sceneout[1][0], output[0]);
     mech::accumulate_from_to<BLOCK_SIZE>(sceneout[1][1], output[1]);
 
-    bool sendused[4] = {false, false, false, false};
-    // add send effects
-    // TODO: FIX SCENE ASSUMPTION
-    if (fx_bypass == fxb_all_fx)
+    bool glob = sc_state[0] || sc_state[1];
+    for (auto slot : fixedFxSlots)
     {
-        for (auto si : sendToIndex)
-        {
-            auto slot = si[0];
-            auto idx = si[1];
-
-            if (fx[slot] && !(storage.getPatch().fx_disable.val.i & (1 << slot)))
-            {
-                send[idx][0].MAC_2_blocks_to(sceneout[0][0], sceneout[0][1], fxsendout[idx][0],
-                                             fxsendout[idx][1], BLOCK_SIZE_QUAD);
-                send[idx][1].MAC_2_blocks_to(sceneout[1][0], sceneout[1][1], fxsendout[idx][0],
-                                             fxsendout[idx][1], BLOCK_SIZE_QUAD);
-                sendused[idx] = fx[slot]->process_ringout(fxsendout[idx][0], fxsendout[idx][1],
-                                                          sc_state[0] || sc_state[1]);
-                FX[idx].MAC_2_blocks_to(fxsendout[idx][0], fxsendout[idx][1], output[0], output[1],
-                                        BLOCK_SIZE_QUAD);
-            }
-        }
-    }
-
-    // apply global effects
-    if ((fx_bypass == fxb_all_fx) || (fx_bypass == fxb_no_sends))
-    {
-        bool glob = sc_state[0] || sc_state[1];
-        for (int i = 0; i < n_send_slots; ++i)
-            glob = glob || sendused[i];
-
-        for (auto v : {fxslot_global1, fxslot_global2, fxslot_global3, fxslot_global4})
-        {
-            if (fx[v] && !(storage.getPatch().fx_disable.val.i & (1 << v)))
-            {
-                glob = fx[v]->process_ringout(output[0], output[1], glob);
-            }
-        }
+        if (fx[slot])
+            glob = fx[slot]->process_ringout(output[0], output[1], glob);
     }
 
     amp.multiply_2_blocks(output[0], output[1], BLOCK_SIZE_QUAD);
@@ -5690,10 +5590,13 @@ void SurgeSynthesizer::reorderFx(int source, int target, FXReorderMode m)
 {
     if (source < 0 || source >= n_fx_slots || target < 0 || target >= n_fx_slots ||
         (source == target && m != FXReorderMode::NONE))
+        return;
+    if (fixedFxTypeForSlot(source) != fxt_off || fixedFxTypeForSlot(target) != fxt_off)
     {
+        storage.reportError("Effects in the fixed chain cannot be moved or replaced.",
+                            "Fixed FX Chain");
         return;
     }
-
     std::lock_guard<std::recursive_mutex> lockModulation(storage.modRoutingMutex);
 
     FxStorage so{storage.getPatch().fx[source]};

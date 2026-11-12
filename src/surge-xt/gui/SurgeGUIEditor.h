@@ -250,7 +250,7 @@ class SurgeGUIEditor : public Surge::GUI::IComponentTagValue::Listener,
 
     // If n_scenes > 2, then this initialization and the modsource_editor one below will need to
     // adjust
-    int current_scene = 0, current_osc[n_scenes] = {0, 0}, current_fx = 0;
+    int current_scene = 0, current_osc[n_scenes] = {0, 0}, current_fx = fxslot_global1;
 
     int getCurrentScene() { return current_scene; }
     int getCurrentLFOIDInEditor()

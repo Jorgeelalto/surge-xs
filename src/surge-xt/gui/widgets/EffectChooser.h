@@ -38,20 +38,11 @@ namespace Surge
 {
 namespace Widgets
 {
-struct EffectChooser;
-
-template <> void LongHoldMixin<EffectChooser>::onLongHold();
-
-struct EffectChooser : public juce::Component,
-                       public WidgetBaseMixin<EffectChooser>,
-                       public LongHoldMixin<EffectChooser>
+struct EffectChooser : public juce::Component, public WidgetBaseMixin<EffectChooser>
 {
     EffectChooser();
     ~EffectChooser();
     void paint(juce::Graphics &g) override;
-
-    void drawSlotText(juce::Graphics &g, const juce::Rectangle<int> &r, const juce::Colour &txtcol,
-                      int fxid);
 
     /*
      * These aren't used but are part of the interface. The callback casts.
@@ -62,15 +53,12 @@ struct EffectChooser : public juce::Component,
 
     void setCurrentEffect(int c) { currentEffect = c; }
     int getCurrentEffect() const { return currentEffect; }
-    int currentEffect{0};
+    int currentEffect{fxslot_global1};
 
     void setEffectType(int index, int type);
     std::array<int, n_fx_slots> fxTypes;
 
-    void mouseDoubleClick(const juce::MouseEvent &event) override;
     void mouseDown(const juce::MouseEvent &event) override;
-    void mouseUp(const juce::MouseEvent &event) override;
-    void mouseDrag(const juce::MouseEvent &event) override;
     void mouseMove(const juce::MouseEvent &event) override;
     void mouseEnter(const juce::MouseEvent &event) override
     {
@@ -78,7 +66,6 @@ struct EffectChooser : public juce::Component,
         mouseMove(event);
     }
     void mouseExit(const juce::MouseEvent &event) override { isHovered = false; }
-    bool keyPressed(const juce::KeyPress &) override;
     void endHover() override
     {
         if (stuckHover)
@@ -93,9 +80,8 @@ struct EffectChooser : public juce::Component,
     void resized() override;
 
     // State for mouse events
-    bool isHovered{false}, hasDragged{false};
-    int currentHover{-1}, currentSceneHover{-1}, currentClicked{-1};
-    int dragX, dragY;
+    bool isHovered{false};
+    int currentHover{-1}, currentClicked{-1};
 
     void setBypass(int b) { bypassState = b; }
     int bypassState{0};
@@ -105,34 +91,7 @@ struct EffectChooser : public juce::Component,
     void toggleSelectedDeactivation();
     void setEffectSlotDeactivation(int slotIdx, bool state);
 
-    SurgeImage *bg{nullptr};
-    void setBackgroundDrawable(SurgeImage *b) { bg = b; }
-
-    juce::Rectangle<int> getSceneRectangle(int sceneNo);
     juce::Rectangle<int> getEffectRectangle(int fx);
-    const char *scenename[n_scenes] = {"A", "B"};
-
-    bool isBypassedOrDeactivated(int fxslot)
-    {
-        if (deactivatedBitmask & (1 << fxslot))
-            return true;
-        switch (bypassState)
-        {
-        case fxb_no_fx:
-            return true;
-        case fxb_no_sends:
-            if ((fxslot == fxslot_send1) || (fxslot == fxslot_send2) || (fxslot == fxslot_send3) ||
-                (fxslot == fxslot_send4))
-                return true;
-            break;
-        case fxb_scene_fx_only:
-            if ((fxslot >= fxslot_send1 && fxslot <= fxslot_global2) ||
-                (fxslot >= fxslot_send3 && fxslot <= fxslot_global4))
-                return true;
-            break;
-        }
-        return false;
-    }
 
     void getColorsForSlot(int fxslot, juce::Colour &bgcol, juce::Colour &frcol,
                           juce::Colour &txtcol);
@@ -140,15 +99,11 @@ struct EffectChooser : public juce::Component,
     SurgeStorage *storage{nullptr};
     void setStorage(SurgeStorage *s) { storage = s; }
 
-    void createFXMenu();
-
     std::array<std::unique_ptr<juce::Component>, n_fx_slots> slotAccOverlays;
     std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EffectChooser);
 };
-
-template <> inline void LongHoldMixin<EffectChooser>::onLongHold() { asT()->createFXMenu(); }
 
 } // namespace Widgets
 } // namespace Surge

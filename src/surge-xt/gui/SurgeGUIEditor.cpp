@@ -1100,6 +1100,10 @@ void SurgeGUIEditor::idle()
             }
         }
 
+        if (auto *fxDisplay = dynamic_cast<Surge::Widgets::CurrentFxDisplay *>(
+                frame->getControlGroupLayer(cg_FX)))
+            fxDisplay->refreshGainReductionMeter();
+
         for (int i = 0; i < 8; i++)
         {
             if (synth->refresh_ctrl_queue[i] >= 0)
@@ -2786,7 +2790,8 @@ void SurgeGUIEditor::ensureParameterItemIsFocused(Parameter *p)
     {
         changeSelectedScene(p->scene - 1);
     }
-    if (p->ctrlgroup == cg_FX && p->ctrlgroup_entry != current_fx)
+    if (p->ctrlgroup == cg_FX && fixedFxTypeForSlot(p->ctrlgroup_entry) != fxt_off &&
+        p->ctrlgroup_entry != current_fx)
     {
         current_fx = p->ctrlgroup_entry;
         activateFromCurrentFx();
@@ -6063,18 +6068,15 @@ bool SurgeGUIEditor::isAHiddenSendOrReturn(Parameter *p)
     if (p->ctrlgroup != cg_GLOBAL)
         return false;
 
+    if (p->id == synth->storage.getPatch().fx_bypass.id)
+        return true;
     int whichS{-1}, whichR{-1};
     for (int i = 0; i < n_send_slots; ++i)
         if (p->id == synth->storage.getPatch().scene[current_scene].send_level[i].id)
             whichS = i;
 
     if (whichS != -1)
-    {
-        int group = whichS % 2;
-        if (whichS == whichSendActive[group])
-            return false;
         return true;
-    }
     int i = 0;
     for (auto sl : {fxslot_send1, fxslot_send2, fxslot_send3, fxslot_send4})
     {
@@ -6083,12 +6085,7 @@ bool SurgeGUIEditor::isAHiddenSendOrReturn(Parameter *p)
         ++i;
     }
     if (whichR != -1)
-    {
-        int group = whichR % 2;
-        if (whichR == whichReturnActive[group])
-            return false;
         return true;
-    }
 
     return false;
 }
@@ -6992,7 +6989,9 @@ void SurgeGUIEditor::loadFromDawExtraState(SurgeSynthesizer *synth)
         }
 
         current_scene = des->editor.current_scene;
-        current_fx = des->editor.current_fx;
+        current_fx = fixedFxTypeForSlot(des->editor.current_fx) != fxt_off
+                         ? des->editor.current_fx
+                         : fixedFxSlots[0];
         modsource = des->editor.modsource;
 
         activateFromCurrentFx();
