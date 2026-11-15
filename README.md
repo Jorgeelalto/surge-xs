@@ -3,9 +3,21 @@
 Surge XS is a simplification of Surge XT, a free and open-source hybrid synthesizer, originally written and sold as a commercial product by @kurasu/Claes
 Johanson at [Vember Audio](http://vemberaudio.se).
 
-This readme serves as the root of developer documentation for Surge XT, which for now is OK for XS too.
+This readme serves as the root of developer documentation for Surge XS.
+
+![Overview image of Surge XS](doc/current_state.png)
+
+## Motivation
+
+Surge is close to being the absolute best Open Source virtual synthesizer in my opinion. The team has made a lot of work to bring it up to speed compatibility-wise, and they have added cool things.
+
+But I think it got too complex. It is not an intuitive synth to use, and having too many options made it worse. It is difficult to recommend to newbies, and it's not curated for daily use either.
+
+Surge XS is my attempt to mitigate this. I love when software does simple things well, and I believe Surge can become like that.
 
 ## Roadmap
+
+This is a constantly changing list of modifications that I want to do.
 
 - [x] Remove Surge FX, Python and Rust bindings.
 - [x] Remove Airwindows stuff
@@ -34,16 +46,9 @@ This readme serves as the root of developer documentation for Surge XT, which fo
 
 # Developing Surge XS
 
-Surge XT uses CMake for all of its build-related tasks, and requires a set of free tools to build the synth. If you have
-a development environment set up, you almost definitely have what you need, but if not, please check out:
+_From here on, this is the documentation straight from Surge Team. I did a few modifications, especially removing stuff that I don't need._
 
-- [Setting up Build Environment on Windows](#windows)
-- [Setting up Build Environment on macOS](#macos)
-- [Setting up Build Environment on Linux](#linux)
-
-Once you have set your environment up, you need to checkout the Surge XT code with Git, grab submodules, run CMake to
-configure, then run CMake to build. Your IDE may support CMake (more on that below), but a reliable way to build Surge XT
-on all platforms is:
+Just do:
 
 ```
 git clone https://github.com/surge-synthesizer/surge.git
@@ -53,9 +58,7 @@ cmake -Bbuild -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --target surge-staged-assets
 ```
 
-(Replace `Release` with `Debug` or `RelWithDebInfo` consistently in both lines as you need.)
-
-This will build all the Surge XT (now XS) binary assets in the directory `build/surge_xt_products` and is often enough of a formula
+This will build all the Surge XS (with XT naming) binary assets in the directory `build/surge_xt_products` and is often enough of a formula
 to do a build.
 
 > [!TIP]
@@ -63,23 +66,6 @@ to do a build.
 ```bash
 cmake --build build --config Release --target surge-xt_VST3
 ```
-
-## Building projects for your IDE
-
-When you run the first CMake step, CMake will generate IDE-compatible files for you. On Windows, it will generate Visual
-Studio files. On Mac it will generate makefiles by default, but if you add the argument `-GXcode` you can get an XCode
-project if you want.
-
-Surge XT developers regularly develop with all sorts of tools. CLion, Visual Studio, vim, emacs, VS Code, and many others
-can work properly with the software.
-
-## Building with support for ASIO
-
-On Windows, building with ASIO is often preferred for Surge XT standalone, since it enables users to use the ASIO
-low-latency audio driver.
-
-We are grateful to Steinberg Media Technologies for updating their licensing to include GPL3 as an option,
-which allows us to effortlessly provide ASIO support _out of the box_, without any special build procedures required.
 
 ## Building an Installer
 
@@ -91,7 +77,7 @@ PATH environment variable.
 
 ## Using CMake on the Command Line for More
 
-We have a variety of other CMake options and targets which can allow you to develop and install Surge XT more easily.
+We have a variety of other CMake options and targets which can allow you to develop and install Surge XS more easily.
 
 ### Plugin Development
 
@@ -138,11 +124,11 @@ Of course, that toolchain makes specific choices. You can make other choices as 
 
 ### Cross-compiling for macOS
 
-Surge XT cross-compiles to macOS Intel from Linux and BSD.
+Surge XS cross-compiles to macOS Intel from Linux and BSD.
 
 1. Install [osxcross](https://github.com/tpoechtrager/osxcross). Make sure to also install the `libclang_rt` library
    built by their `build_compiler_rt.sh` script.
-2. Configure and build Surge XT:
+2. Configure and build Surge XS:
 
 ```
 cmake -DCMAKE_TOOLCHAIN_FILE=cmake/x86_64-apple-darwin20.4-clang.cmake -DCMAKE_FIND_ROOT_PATH=<path_to_osxcross_sdk> -Bbuild
@@ -185,4 +171,4 @@ older than 7 or so and clangs after 9 or 10. You will also need to install a set
 sudo apt install build-essential git cmake libcairo-dev libxkbcommon-x11-dev libxkbcommon-dev libxcb-cursor-dev libxcb-keysyms1-dev libxcb-util-dev libxrandr-dev libxinerama-dev libxcursor-dev libasound2-dev libjack-jackd2-dev
 ```
 
-*You can find more info about Surge XT on Linux and other Unix-like distros in [this document](doc/Linux%20and%20Other%20Unix-like%20Distributions.md).*
+*You can find more info about Surge XS on Linux and other Unix-like distros in [this document](doc/Linux%20and%20Other%20Unix-like%20Distributions.md).*
